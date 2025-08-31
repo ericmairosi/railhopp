@@ -1,0 +1,27 @@
+{
+  "name": "@railhopp/database",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Database schemas and utilities for Railhopp",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit",
+    "db:generate": "supabase gen types typescript --local > src/types/database.ts",
+    "db:migrate": "supabase db push"
+  },
+  "dependencies": {
+    "@railhopp/types": "workspace:*",
+    "@supabase/supabase-js": "^2.38.0",
+    "drizzle-orm": "^0.29.0",
+    "postgres": "^3.4.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "supabase": "^1.115.0",
+    "drizzle-kit": "^0.20.0"
+  }
+}
