@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Railhopp - Real-time Updates Demo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .header {
+            text-align: center;
+            background: linear-gradient(135deg, #2563eb, #3b82f6);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .connected { background: #d1fae5; color: #065f46; }
+        .connecting { background: #fef3c7; color: #92400e; }
+        .disconnected { background: #fee2e2; color: #991b1b; }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .primary { background: #3b82f6; color: white; }
+        .primary:hover { background: #2563eb; }
+        .secondary { background: #6b7280; color: white; }
+        .secondary:hover { background: #4b5563; }
+        .danger { background: #dc2626; color: white; }
+        .danger:hover { background: #b91c1c; }
+        .updates {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .update-item {
+            border-left: 4px solid #3b82f6;
+            padding: 12px;
+            margin-bottom: 12px;
+            background: #f8fafc;
+            border-radius: 0 6px 6px 0;
+        }
+        .update-movement { border-left-color: #10b981; }
+        .update-delay { border-left-color: #f59e0b; }
+        .update-service { border-left-color: #8b5cf6; }
+        .update-status { border-left-color: #6b7280; }
+        .update-time {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 5px;
+        }
+        .update-content {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .update-details {
+            font-size: 14px;
+            color: #374151;
+        }
+        .no-updates {
+            text-align: center;
+            color: #6b7280;
+            font-style: italic;
+            padding: 40px;
+        }
+        .simulation {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .simulation h3 {
+            margin-top: 0;
+            color: #374151;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚂 Railhopp Real-time Updates</h1>
+        <p>Live train movements, delays, and service updates</p>
+    </div>
+
+    <div id="status" class="status disconnected">
+        Status: Disconnected
+    </div>
+
+    <div class="controls">
+        <button id="connectBtn" class="primary" onclick="connect()">Connect</button>
+        <button id="disconnectBtn" class="secondary" onclick="disconnect()">Disconnect</button>
+        <button class="secondary" onclick="subscribeToStation()">Subscribe to KGX</button>
+        <button class="secondary" onclick="sendPing()">Ping</button>
+        <button class="danger" onclick="clearUpdates()">Clear Updates</button>
+    </div>
+
+    <div class="simulation">
+        <h3>📡 Simulate Live Data</h3>
+        <p>Test the real-time system by sending simulated train updates:</p>
+        <div class="controls">
+            <button class="primary" onclick="simulateMovement()">🚂 Train Movement</button>
+            <button class="primary" onclick="simulateDelay()">⏰ Train Delay</button>
+            <button class="primary" onclick="simulateService()">📢 Service Update</button>
+        </div>
+    </div>
+
+    <div class="updates">
+        <div id="updates-list" class="no-updates">
+            No updates received yet. Connect to start receiving live data!
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let updates = [];
+
+        function updateStatus(message, className) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = `Status: ${message}`;
+            statusEl.className = `status ${className}`;
+        }
+
+        function connect() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                console.log('Already connected');
+                return;
+            }
+
+            updateStatus('Connecting...', 'connecting');
+            ws = new WebSocket('ws://localhost:3001');
+
+            ws.onopen = () => {
+                console.log('✅ Connected to Railhopp WebSocket');
+                updateStatus('Connected', 'connected');
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const update = JSON.parse(event.data);
+                    console.log('📨 Received update:', update);
+                    
+                    updates.unshift(update);
+                    if (updates.length > 50) {
+                        updates = updates.slice(0, 50); // Keep last 50 updates
+                    }
+                    
+                    renderUpdates();
+                } catch (error) {
+                    console.error('Error parsing message:', error);
+                }
+            };
+
+            ws.onclose = (event) => {
+                console.log('🔌 WebSocket closed:', event.code, event.reason);
+                updateStatus('Disconnected', 'disconnected');
+                ws = null;
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                updateStatus('Connection Error', 'disconnected');
+            };
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close(1000, 'Manual disconnect');
+                ws = null;
+            }
+            updateStatus('Disconnected', 'disconnected');
+        }
+
+        function subscribeToStation() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'SUBSCRIBE_STATION',
+                    stationCrs: 'KGX'
+                }));
+                console.log('📍 Subscribed to KGX updates');
+            }
+        }
+
+        function sendPing() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'PING' }));
+                console.log('🏓 Ping sent');
+            }
+        }
+
+        function clearUpdates() {
+            updates = [];
+            renderUpdates();
+        }
+
+        function renderUpdates() {
+            const container = document.getElementById('updates-list');
+            
+            if (updates.length === 0) {
+                container.innerHTML = '<div class="no-updates">No updates received yet. Connect to start receiving live data!</div>';
+                return;
+            }
+
+            container.innerHTML = updates.map(update => {
+                const time = new Date(update.data.timestamp).toLocaleTimeString();
+                let className = 'update-item';
+                let content = '';
+                let details = '';
+
+                switch (update.type) {
+                    case 'TRAIN_MOVEMENT':
+                        className += ' update-movement';
+                        content = `🚂 Train ${update.data.trainId} ${update.data.eventType}`;
+                        details = `Station: ${update.data.stationCrs}${update.data.platform ? `, Platform: ${update.data.platform}` : ''}${update.data.delayMinutes > 0 ? `, Delayed: ${update.data.delayMinutes} min` : ''}`;
+                        break;
+                    case 'TRAIN_DELAY':
+                        className += ' update-delay';
+                        content = `⏰ Delay Alert: ${update.data.trainId}`;
+                        details = `${update.data.delayMinutes} minutes delay at ${update.data.stationCrs}`;
+                        break;
+                    case 'SERVICE_UPDATE':
+                        className += ' update-service';
+                        content = `📢 Service Update`;
+                        details = update.data.message;
+                        break;
+                    case 'CONNECTION_STATUS':
+                        className += ' update-status';
+                        content = `🔌 Connection`;
+                        details = update.data.message;
+                        break;
+                    default:
+                        content = `📋 ${update.type}`;
+                        details = JSON.stringify(update.data);
+                }
+
+                return `
+                    <div class="${className}">
+                        <div class="update-time">${time}</div>
+                        <div class="update-content">${content}</div>
+                        <div class="update-details">${details}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Simulation functions
+        async function simulateMovement() {
+            const trains = ['1A23', '2B45', '3C67', '4D89', '5E12'];
+            const stations = ['KGX', 'PAD', 'VIC', 'WAT', 'LIV'];
+            const events = ['ARRIVAL', 'DEPARTURE'];
+            const platforms = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+            
+            const response = await fetch('/api/websocket', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'broadcast',
+                    messageType: 'TRAIN_MOVEMENT',
+                    trainId: trains[Math.floor(Math.random() * trains.length)],
+                    stationCrs: stations[Math.floor(Math.random() * stations.length)],
+                    eventType: events[Math.floor(Math.random() * events.length)],
+                    delayMinutes: Math.floor(Math.random() * 10),
+                    platform: platforms[Math.floor(Math.random() * platforms.length)]
+                })
+            });
+            console.log('🚂 Simulated train movement');
+        }
+
+        async function simulateDelay() {
+            const trains = ['1A23', '2B45', '3C67', '4D89', '5E12'];
+            const stations = ['KGX', 'PAD', 'VIC', 'WAT', 'LIV'];
+            
+            const response = await fetch('/api/websocket', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'broadcast',
+                    messageType: 'TRAIN_DELAY',
+                    trainId: trains[Math.floor(Math.random() * trains.length)],
+                    stationCrs: stations[Math.floor(Math.random() * stations.length)],
+                    delayMinutes: Math.floor(Math.random() * 20) + 5
+                })
+            });
+            console.log('⏰ Simulated train delay');
+        }
+
+        async function simulateService() {
+            const messages = [
+                'Good service on all lines',
+                'Minor delays due to signal failure',
+                'Services running normally',
+                'Planned engineering works this weekend',
+                'All services operational'
+            ];
+            
+            const response = await fetch('/api/websocket', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'broadcast',
+                    messageType: 'SERVICE_UPDATE',
+                    message: messages[Math.floor(Math.random() * messages.length)],
+                    stationCrs: 'KGX'
+                })
+            });
+            console.log('📢 Simulated service update');
+        }
+
+        // Auto-connect on page load
+        window.addEventListener('load', () => {
+            connect();
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (ws) {
+                ws.close(1000, 'Page unload');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -2,6 +2,9 @@
 
 export * from './railway';
 export * from './api';
+export * from './darwin';
+export * from './knowledge-station';
+export * from './unified-rail-data';
 
 // Re-export common utility types
 export type Nullable<T> = T | null;

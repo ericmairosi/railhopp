@@ -1,5 +1,7 @@
 // API types for external data feeds and internal APIs
 
+import type { Station } from './railway';
+
 // Darwin API Types
 export interface DarwinDeparture {
   std: string; // scheduled time of departure

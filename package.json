@@ -3,7 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "description": "Modern railway web application with real-time UK train information",
-  "keywords": ["railway", "trains", "real-time", "uk", "transport"],
+  "keywords": [
+    "railway",
+    "trains",
+    "real-time",
+    "uk",
+    "transport"
+  ],
   "author": "Eric M",
   "license": "MIT",
   "scripts": {
@@ -20,11 +26,19 @@
     "eslint": "^8.55.0",
     "prettier": "^3.1.0",
     "turbo": "^1.11.0",
-    "typescript": "^5.3.0"
+    "typescript": "^5.3.0",
+    "xml2js": "^0.6.2"
   },
   "packageManager": "pnpm@10.15.0",
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
+  },
+  "dependencies": {
+    "@stomp/stompjs": "^7.1.1",
+    "@types/stompit": "^0.26.6",
+    "@types/ws": "^8.18.1",
+    "stompit": "^1.0.0",
+    "ws": "^8.18.3"
   }
 }
