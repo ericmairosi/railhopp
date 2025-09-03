@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 
     const darwin = getDarwinClient();
     
-    const departureBoard = await darwin.getDepartureBoard({
+    const departureBoard = await darwin.getStationBoard({
       crs: crs.toUpperCase(),
       numRows: numRows ? parseInt(numRows) : 10,
       filterCrs: filterCrs || undefined,
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
 
     const darwin = getDarwinClient();
     
-    const departureBoard = await darwin.getDepartureBoard({
+    const departureBoard = await darwin.getStationBoard({
       crs: crs.toUpperCase(),
       numRows: numRows || 10,
       filterCrs,

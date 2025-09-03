@@ -4,17 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build --turbopack",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@next/third-parties": "^15.5.0",
-    "@railhopp/database": "workspace:*",
-    "@railhopp/rail-data": "workspace:*",
-    "@railhopp/types": "workspace:*",
-    "@railhopp/ui": "workspace:*",
     "@supabase/supabase-js": "^2.56.1",
     "@tanstack/react-query": "^5.17.0",
     "clsx": "^2.1.1",
@@ -37,7 +33,6 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/soap": "^0.21.0",
     "@types/xml2js": "^0.4.14",
     "eslint": "^9",
     "eslint-config-next": "15.5.2",

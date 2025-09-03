@@ -19,9 +19,9 @@ export async function GET(
 
     const darwin = getDarwinClient();
     
-    const serviceDetails = await darwin.getServiceDetails({
-      serviceId: decodeURIComponent(serviceId)
-    });
+    const serviceDetails = await darwin.getServiceDetails(
+      decodeURIComponent(serviceId)
+    );
 
     return NextResponse.json({
       success: true,
