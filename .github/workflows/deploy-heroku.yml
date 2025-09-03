@@ -1,4 +1,4 @@
-name: Deploy Railhopp to Production
+name: Deploy Railhopp to Production (Heroku)
 
 on:
   push:
@@ -58,7 +58,6 @@ jobs:
       run: pnpm build
       env:
         NODE_ENV: production
-        # Add any build-time environment variables here
         NEXT_TELEMETRY_DISABLED: 1
 
   deploy-web:
@@ -82,22 +81,24 @@ jobs:
 
   deploy-websocket:
     runs-on: ubuntu-latest
-    name: Deploy WebSocket Server to Fly.io
+    name: Deploy WebSocket Server
     needs: test
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Needed for git subtree
 
-    - name: Setup Fly CLI
-      uses: superfly/flyctl-actions/setup-flyctl@master
-      
-    - name: Deploy to Fly.io
-      run: flyctl deploy --remote-only
-      working-directory: ./websocket-server
-      env:
-        FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+    - name: Deploy to Heroku
+      uses: akhileshns/heroku-deploy@v3.13.15
+      with:
+        heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+        heroku_app_name: ${{ secrets.HEROKU_APP_NAME }}
+        heroku_email: ${{ secrets.HEROKU_EMAIL }}
+        appdir: "websocket-server"
+        procfile: "web: node server.js"
 
   health-check:
     runs-on: ubuntu-latest

@@ -1,4 +1,7 @@
-name: Deploy Railhopp to Production
+# Updated GitHub Actions workflow for Fly.io deployment
+# Replace your current .github/workflows/deploy.yml with this
+
+name: Deploy Railhopp to Production (Fly.io)
 
 on:
   push:
@@ -58,12 +61,11 @@ jobs:
       run: pnpm build
       env:
         NODE_ENV: production
-        # Add any build-time environment variables here
         NEXT_TELEMETRY_DISABLED: 1
 
   deploy-web:
     runs-on: ubuntu-latest
-    name: Deploy Web App
+    name: Deploy Web App to Vercel
     needs: test
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
 
@@ -110,7 +112,7 @@ jobs:
       run: |
         curl -f ${{ secrets.PRODUCTION_URL }}/api/health || exit 1
 
-    - name: Check WebSocket Health
+    - name: Check WebSocket Health  
       run: |
         curl -f ${{ secrets.WEBSOCKET_URL }}/health || exit 1
 
