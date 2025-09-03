@@ -159,14 +159,22 @@ export function generateMockServiceDetails(serviceId: string): TrainServiceDetai
   };
 }
 
-// Check if we should use mock data (when Darwin API is not configured)
+// Check if we should use mock data (when Darwin API is not configured or failing)
 export function shouldUseMockData(): boolean {
-  // Use mock data if Darwin API is not configured
+  // Use mock data if Darwin API is not properly configured
   const hasApiKey = Boolean(
     process.env.DARWIN_API_KEY && 
     process.env.DARWIN_API_KEY !== 'your_darwin_api_token_here' &&
-    process.env.DARWIN_API_KEY !== 'your_darwin_api_key_here'
+    process.env.DARWIN_API_KEY !== 'your_darwin_api_key_here' &&
+    process.env.DARWIN_API_KEY !== 'your_darwin_api_key' &&
+    process.env.DARWIN_API_KEY.length > 10 // Basic validation
   );
   
-  return !hasApiKey;
+  // For development, you can force mock mode by setting FORCE_MOCK_DATA=true
+  const forceMock = process.env.FORCE_MOCK_DATA === 'true';
+  
+  // Use environment variable to control mock data usage
+  const mockDataEnabled = process.env.USE_MOCK_DATA !== 'false';
+  
+  return !hasApiKey || forceMock || !mockDataEnabled;
 }

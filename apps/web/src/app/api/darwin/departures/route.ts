@@ -29,21 +29,37 @@ export async function GET(request: NextRequest) {
 
     // Check if we should use mock data
     if (shouldUseMockData()) {
+      console.log(`Using mock data for station ${crs} - Darwin API not configured or disabled`);
+      
       const mockData = generateMockStationBoard(
         crs.toUpperCase(),
         numRows ? parseInt(numRows) : 10
       );
+      
+      // Add a clear indicator that this is mock data
+      mockData.messages = mockData.messages || [];
+      mockData.messages.unshift({
+        severity: 'info',
+        message: 'This is sample data for demonstration purposes. Configure Darwin API for real-time information.',
+        category: 'MOCK_DATA_NOTICE'
+      });
       
       return NextResponse.json({
         success: true,
         data: mockData,
         timestamp: new Date().toISOString(),
         source: 'mock',
-        message: 'Using mock data - Darwin API not configured'
+        message: 'Using mock data - Darwin API not configured',
+        apiStatus: {
+          configured: false,
+          reason: 'Darwin API key not set or invalid'
+        }
       });
     }
 
     const darwin = getDarwinClient();
+    
+    console.log(`Fetching real Darwin data for station ${crs}`);
     
     const departureBoard = await darwin.getStationBoard({
       crs: crs.toUpperCase(),
@@ -51,12 +67,19 @@ export async function GET(request: NextRequest) {
       filterCrs: filterCrs || undefined,
       filterType: filterType as 'to' | 'from' | undefined
     });
+    
+    console.log(`Successfully fetched Darwin data for ${crs}: ${departureBoard.departures.length} services`);
 
     return NextResponse.json({
       success: true,
       data: departureBoard,
       timestamp: new Date().toISOString(),
-      source: 'darwin'
+      source: 'darwin',
+      apiStatus: {
+        configured: true,
+        working: true,
+        servicesFound: departureBoard.departures.length
+      }
     });
 
   } catch (error) {

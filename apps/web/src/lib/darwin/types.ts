@@ -51,6 +51,14 @@ export interface LiveStationBoard {
   generatedAt: string;
   stationName: string;
   stationCode: string;
+  messages?: StationMessage[];
+  platformsAvailable?: boolean;
+}
+
+export interface StationMessage {
+  severity: 'info' | 'warning' | 'error';
+  message: string;
+  category: string;
 }
 
 export interface TrainServiceDetails {

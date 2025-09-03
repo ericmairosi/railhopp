@@ -8,18 +8,9 @@ importers:
 
   .:
     dependencies:
-      '@types/stompit':
-        specifier: ^0.26.6
-        version: 0.26.6
-      '@types/ws':
-        specifier: ^8.18.1
-        version: 8.18.1
-      stompit:
-        specifier: ^1.0.0
-        version: 1.0.0
-      ws:
-        specifier: ^8.18.3
-        version: 8.18.3
+      dotenv:
+        specifier: ^17.2.2
+        version: 17.2.2
     devDependencies:
       '@types/node':
         specifier: ^20.10.0
@@ -36,27 +27,12 @@ importers:
       typescript:
         specifier: ^5.3.0
         version: 5.9.2
-      xml2js:
-        specifier: ^0.6.2
-        version: 0.6.2
 
   apps/web:
     dependencies:
       '@next/third-parties':
         specifier: ^15.5.0
         version: 15.5.2(next@15.5.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react@19.1.0)
-      '@railhopp/database':
-        specifier: workspace:*
-        version: link:../../packages/database
-      '@railhopp/rail-data':
-        specifier: workspace:*
-        version: link:../../packages/rail-data
-      '@railhopp/types':
-        specifier: workspace:*
-        version: link:../../packages/types
-      '@railhopp/ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
       '@supabase/supabase-js':
         specifier: ^2.56.1
         version: 2.56.1
@@ -118,9 +94,6 @@ importers:
       '@types/react-dom':
         specifier: ^19
         version: 19.1.9(@types/react@19.1.12)
-      '@types/soap':
-        specifier: ^0.21.0
-        version: 0.21.0
       '@types/xml2js':
         specifier: ^0.4.14
         version: 0.4.14
@@ -1938,10 +1911,6 @@ packages:
   '@types/react@19.1.12':
     resolution: {integrity: sha512-cMoR+FoAf/Jyq6+Df2/Z41jISvGZZ2eTlnsaJRptmZ76Caldwy1odD4xTr/gNV9VLj0AWgg/nmkevIyUfIIq5w==}
 
-  '@types/soap@0.21.0':
-    resolution: {integrity: sha512-NFT751PfjmIMJz5m/AHfygq8x2svHU4Bi2CXATSjrk9S2Elv19yu6rDf6foER4+o/mwMESTZrvqq5BS91a0uAg==}
-    deprecated: This is a stub types definition for soap (https://www.npmjs.com/package/soap). soap provides its own type definitions, so you don't need @types/soap installed!
-
   '@types/stack-utils@2.0.3':
     resolution: {integrity: sha512-9aEbYZ3TbYMznPdcdr3SmIrLXwC/AKZXQeCf9Pgao5CKb8CyHuEX5jzWPTkvregvhRJHcpRO6BFoGW9ycaOkYw==}
 
@@ -2564,6 +2533,10 @@ packages:
   doctrine@3.0.0:
     resolution: {integrity: sha512-yS+Q5i3hBf7GBkd4KG8a7eBNNWNGLTaEwwYWUijIYM7zrlYDM0BFXHjjPWlWZ1Rg7UaddZeIDmi9jF3HmqiQ2w==}
     engines: {node: '>=6.0.0'}
+
+  dotenv@17.2.2:
+    resolution: {integrity: sha512-Sf2LSQP+bOlhKWWyhFsn0UsfdK/kCWRv1iuA2gXAwt3dyNabr6QSj00I2V10pidqz69soatm9ZwZvpQMTIOd5Q==}
+    engines: {node: '>=12'}
 
   dreamopt@0.8.0:
     resolution: {integrity: sha512-vyJTp8+mC+G+5dfgsY+r3ckxlz+QMX40VjPQsZc5gxVAxLmi64TBoVkP54A/pRAXMXsbu2GMMBrZPxNv23waMg==}
@@ -6270,12 +6243,6 @@ snapshots:
     dependencies:
       csstype: 3.1.3
 
-  '@types/soap@0.21.0':
-    dependencies:
-      soap: 1.3.0
-    transitivePeerDependencies:
-      - supports-color
-
   '@types/stack-utils@2.0.3': {}
 
   '@types/stompit@0.26.6':
@@ -6927,6 +6894,8 @@ snapshots:
   doctrine@3.0.0:
     dependencies:
       esutils: 2.0.3
+
+  dotenv@17.2.2: {}
 
   dreamopt@0.8.0:
     dependencies:
