@@ -598,6 +598,56 @@ export default function EnhancedDepartureBoard({
                 
                 return (
                   <>
+                    {/* Summary bar with sticky filters */}
+                    <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white/80 px-6 py-2 text-xs text-gray-600 backdrop-blur">
+                      <div>
+                        Showing <span className="font-semibold text-gray-800">{rows.length}</span> of{' '}
+                        <span className="font-semibold text-gray-800">{stationBoard.departures.length}</span>
+                        {filterDest || filterPlat || filterTOC ? ' • filters active' : ''}
+                      </div>
+                      {(filterDest || filterPlat || filterTOC) && (
+                        <div className="flex flex-wrap items-center gap-2">
+                          {filterDest && (
+                            <button
+                              onClick={() => setFilterDest('')}
+                              className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 font-medium text-blue-700 hover:bg-blue-100"
+                            >
+                              Dest: {filterDest}
+                              <span className="ml-1">×</span>
+                            </button>
+                          )}
+                          {filterPlat && (
+                            <button
+                              onClick={() => setFilterPlat('')}
+                              className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 font-medium text-blue-700 hover:bg-blue-100"
+                            >
+                              Plat: {filterPlat}
+                              <span className="ml-1">×</span>
+                            </button>
+                          )}
+                          {filterTOC && (
+                            <button
+                              onClick={() => setFilterTOC('')}
+                              className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 font-medium text-blue-700 hover:bg-blue-100"
+                            >
+                              TOC: {filterTOC}
+                              <span className="ml-1">×</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => {
+                              setFilterDest('');
+                              setFilterPlat('');
+                              setFilterTOC('');
+                            }}
+                            className="ml-2 text-blue-600 hover:underline"
+                          >
+                            Clear all
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
                     {/* Table Header */}
                     <div className="border-b border-gray-200 bg-gray-50 px-6 py-3">
                       {viewMode === 'simple' ? (

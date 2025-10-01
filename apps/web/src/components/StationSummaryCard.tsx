@@ -77,11 +77,36 @@ export default function StationSummaryCard() {
         </button>
       </div>
 
+      {/* Quick picks */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {[
+          { code: 'KGX', name: 'Kings Cross' },
+          { code: 'EUS', name: 'Euston' },
+          { code: 'PAD', name: 'Paddington' },
+          { code: 'WAT', name: 'Waterloo' },
+          { code: 'VIC', name: 'Victoria' },
+          { code: 'LST', name: 'Liverpool St' },
+        ].map((s) => (
+          <button
+            key={s.code}
+            onClick={() => {
+              setCrs(s.code)
+              setDisplay(`${s.name} (${s.code})`)
+            }}
+            className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+          >
+            {s.name}
+          </button>
+        ))}
+      </div>
+
       {loading && <div className="text-sm text-slate-600">Loading…</div>}
       {error && <div className="text-sm text-red-600">{error}</div>}
 
       {data && (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <>
+          <div className="mb-2 text-xs text-slate-500">Source: Knowledgebase</div>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <div>
             <div className="text-xs font-semibold text-slate-500">STATION</div>
             <div className="text-base font-bold text-slate-900">{data.name}</div>
@@ -114,6 +139,7 @@ export default function StationSummaryCard() {
             </div>
           </div>
         </div>
+        </>
       )}
     </div>
   )
