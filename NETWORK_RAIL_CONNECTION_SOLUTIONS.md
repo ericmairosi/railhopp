@@ -12,6 +12,7 @@ Your Network Rail STOMP connection is being **blocked at the network level**. Th
 ## ✅ Immediate Solutions
 
 ### Solution 1: Test from Different Network
+
 ```bash
 # Try mobile hotspot or different WiFi
 # This will confirm if it's your network blocking it
@@ -19,7 +20,9 @@ node test-websocket-simple.js
 ```
 
 ### Solution 2: Production Deployment (Recommended)
+
 Deploy to **Railway** where the connection typically works:
+
 ```bash
 # Railway servers usually have better network connectivity
 cd websocket-server
@@ -27,6 +30,7 @@ railway up
 ```
 
 ### Solution 3: Enable Simulation Mode
+
 Your WebSocket server already has a fallback simulation mode:
 
 ```javascript
@@ -40,10 +44,10 @@ Network Rail also provides HTTP endpoints that might work better:
 
 ```javascript
 // Alternative: Network Rail REST API (requires separate registration)
-const DARWIN_REST_API = 'https://lite.realtime.nationalrail.co.uk/OpenLDBWS/ldb12.asmx';
+const DARWIN_REST_API = 'https://lite.realtime.nationalrail.co.uk/OpenLDBWS/ldb12.asmx'
 
 // Alternative: Network Rail Historic Data Service
-const HISTORIC_API = 'https://publicdatafeeds.networkrail.co.uk/ntrod/schedule';
+const HISTORIC_API = 'https://publicdatafeeds.networkrail.co.uk/ntrod/schedule'
 ```
 
 ## 🛠️ Technical Fixes
@@ -55,8 +59,8 @@ The server should gracefully handle connection failures:
 ```javascript
 // Enhanced connection with automatic fallback
 const connectWithFallback = () => {
-  console.log('🔄 Attempting Network Rail connection...');
-  
+  console.log('🔄 Attempting Network Rail connection...')
+
   const client = new StompJs.Client({
     brokerURL: STOMP_URL,
     connectHeaders: {
@@ -64,36 +68,36 @@ const connectWithFallback = () => {
       passcode: process.env.NETWORK_RAIL_PASSWORD,
     },
     connectionTimeout: 15000, // 15 second timeout
-  });
+  })
 
   client.onConnect = () => {
-    console.log('✅ Connected to Network Rail');
-    useRealData = true;
-  };
+    console.log('✅ Connected to Network Rail')
+    useRealData = true
+  }
 
   client.onStompError = (error) => {
-    console.warn('⚠️ STOMP connection failed, using simulation');
-    useRealData = false;
-    startSimulation();
-  };
+    console.warn('⚠️ STOMP connection failed, using simulation')
+    useRealData = false
+    startSimulation()
+  }
 
   client.onWebSocketError = (error) => {
-    console.warn('🔌 WebSocket blocked, using simulation');
-    useRealData = false;
-    startSimulation();
-  };
+    console.warn('🔌 WebSocket blocked, using simulation')
+    useRealData = false
+    startSimulation()
+  }
 
   // Timeout fallback
   setTimeout(() => {
     if (!client.connected) {
-      console.warn('⏰ Connection timeout, using simulation');
-      useRealData = false;
-      startSimulation();
+      console.warn('⏰ Connection timeout, using simulation')
+      useRealData = false
+      startSimulation()
     }
-  }, 20000);
+  }, 20000)
 
-  client.activate();
-};
+  client.activate()
+}
 ```
 
 ### Fix 2: Windows Firewall Configuration
@@ -110,46 +114,49 @@ New-NetFirewallRule -DisplayName "Network Rail STOMP" -Direction Outbound -Proto
 ```javascript
 // Try different ports that Network Rail might support
 const ALTERNATIVE_URLS = [
-  'wss://publicdatafeeds.networkrail.co.uk:61618',  // Main
-  'ws://publicdatafeeds.networkrail.co.uk:61613',   // Alternative port
-  'wss://publicdatafeeds.networkrail.co.uk:443',    // HTTPS port
-];
+  'wss://publicdatafeeds.networkrail.co.uk:61618', // Main
+  'ws://publicdatafeeds.networkrail.co.uk:61613', // Alternative port
+  'wss://publicdatafeeds.networkrail.co.uk:443', // HTTPS port
+]
 
 const tryConnections = async () => {
   for (const url of ALTERNATIVE_URLS) {
     try {
-      console.log(`🔄 Trying ${url}...`);
-      const ws = new WebSocket(url);
-      
+      console.log(`🔄 Trying ${url}...`)
+      const ws = new WebSocket(url)
+
       await new Promise((resolve, reject) => {
-        ws.on('open', resolve);
-        ws.on('error', reject);
-        setTimeout(reject, 10000); // 10 second timeout
-      });
-      
-      console.log(`✅ Connected via ${url}`);
-      return url;
+        ws.on('open', resolve)
+        ws.on('error', reject)
+        setTimeout(reject, 10000) // 10 second timeout
+      })
+
+      console.log(`✅ Connected via ${url}`)
+      return url
     } catch (error) {
-      console.log(`❌ ${url} failed: ${error.message}`);
+      console.log(`❌ ${url} failed: ${error.message}`)
     }
   }
-  
-  throw new Error('All connection attempts failed');
-};
+
+  throw new Error('All connection attempts failed')
+}
 ```
 
 ## 🎯 Recommended Action Plan
 
 ### Immediate (Next 5 minutes):
+
 1. **Test mobile hotspot**: Connect your computer to mobile data and retry
 2. **Deploy to Railway**: Let's get your WebSocket server running in the cloud
 
 ### Short-term (Today):
+
 1. **Enable simulation mode**: Your app will work with realistic fake data
 2. **Test Darwin API**: Verify your Darwin connection still works
 3. **Deploy production**: Get your app live with fallback capabilities
 
 ### Long-term (This week):
+
 1. **Network configuration**: Work with IT/ISP to allow port 61618
 2. **Alternative data sources**: Explore other UK rail data APIs
 3. **Hybrid approach**: Combine real data (when available) with simulation

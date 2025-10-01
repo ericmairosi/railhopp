@@ -12,26 +12,28 @@ import {
   ServiceTracking,
   DisruptionInfo,
   KnowledgeStationAPIError,
-  DataSourceStatus
-} from './types';
+  DataSourceStatus,
+  StationSearchRequest,
+  StationSummary,
+} from './types'
 
 export class KnowledgeStationClient {
-  private config: KnowledgeStationConfig;
-  private baseHeaders: Record<string, string>;
+  private config: KnowledgeStationConfig
+  private baseHeaders: Record<string, string>
 
   constructor(config: KnowledgeStationConfig) {
     this.config = {
       timeout: 10000,
       retries: 3,
       enabled: true,
-      ...config
-    };
+      ...config,
+    }
 
     this.baseHeaders = {
       'Content-Type': 'application/json',
       'User-Agent': 'Railhopp-Knowledge-Station-Client/1.0',
-      'Authorization': `Bearer ${this.config.token}`
-    };
+      Authorization: `Bearer ${this.config.token}`,
+    }
   }
 
   /**
@@ -39,74 +41,71 @@ export class KnowledgeStationClient {
    */
   isEnabled(): boolean {
     return Boolean(
-      this.config.enabled && 
-      this.config.apiUrl && 
-      this.config.token && 
-      this.config.token !== 'your_knowledge_station_token_here'
-    );
+      this.config.enabled &&
+        this.config.apiUrl &&
+        this.config.token &&
+        this.config.token !== 'your_knowledge_station_token_here'
+    )
   }
 
   /**
    * Make HTTP request to Knowledge Station API
    */
-  private async makeRequest(
-    endpoint: string, 
-    options: RequestInit = {}
-  ): Promise<any> {
+  private async makeRequest(endpoint: string, options: RequestInit = {}): Promise<any> {
     if (!this.isEnabled()) {
       throw new KnowledgeStationAPIError(
         'Knowledge Station is not enabled or properly configured',
         'NOT_ENABLED',
         { enabled: this.config.enabled, hasToken: !!this.config.token }
-      );
+      )
     }
 
-    const url = `${this.config.apiUrl}${endpoint}`;
+    const url = `${this.config.apiUrl}${endpoint}`
     const requestOptions: RequestInit = {
       headers: {
         ...this.baseHeaders,
-        ...options.headers
+        ...options.headers,
       },
-      ...options
-    };
+      ...options,
+    }
 
     // Implement timeout using AbortController
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
-    requestOptions.signal = controller.signal;
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), this.config.timeout)
+    requestOptions.signal = controller.signal
 
-    let lastError: any;
-    const maxRetries = this.config.retries || 1;
+    let lastError: any
+    const maxRetries = this.config.retries || 1
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        const response = await fetch(url, requestOptions);
-        clearTimeout(timeoutId);
-        
+        const response = await fetch(url, requestOptions)
+        clearTimeout(timeoutId)
+
         if (!response.ok) {
-          const errorBody = await response.text();
+          const errorBody = await response.text()
           throw new KnowledgeStationAPIError(
             `HTTP ${response.status}: ${response.statusText}`,
             'HTTP_ERROR',
             { status: response.status, body: errorBody, url }
-          );
+          )
         }
 
-        const contentType = response.headers.get('content-type') || '';
+        const contentType = response.headers.get('content-type') || ''
         if (!contentType.includes('application/json')) {
           throw new KnowledgeStationAPIError(
             'Expected JSON response from Knowledge Station API',
             'INVALID_RESPONSE_TYPE',
             { contentType, url }
-          );
+          )
         }
 
-        return await response.json();
+        return await response.json()
       } catch (error) {
-        lastError = error;
-        
+        lastError = error
+
         if (error instanceof KnowledgeStationAPIError) {
-          throw error;
+          throw error
         }
 
         if (attempt === maxRetries) {
@@ -114,15 +113,15 @@ export class KnowledgeStationClient {
             `Failed to connect to Knowledge Station API after ${maxRetries} attempts`,
             'CONNECTION_ERROR',
             { originalError: error, url, attempt }
-          );
+          )
         }
 
         // Wait before retrying (exponential backoff)
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        await new Promise((resolve) => setTimeout(resolve, Math.pow(2, attempt) * 1000))
       }
     }
 
-    throw lastError;
+    throw lastError
   }
 
   /**
@@ -131,27 +130,29 @@ export class KnowledgeStationClient {
   async getStationInfo(request: StationInfoRequest): Promise<EnhancedStationInfo> {
     const queryParams = new URLSearchParams({
       crs: request.crs.toUpperCase(),
-      format: request.format || 'json'
-    });
+      format: request.format || 'json',
+    })
 
     if (request.includeServices) {
-      queryParams.append('include', 'services');
+      queryParams.append('include', 'services')
     }
     if (request.includeDisruptions) {
-      queryParams.append('include', 'disruptions');
+      queryParams.append('include', 'disruptions')
     }
 
     try {
-      const response = await this.makeRequest(`/station/${request.crs.toUpperCase()}?${queryParams}`);
-      return this.transformStationInfo(response);
+      const response = await this.makeRequest(
+        `/station/${request.crs.toUpperCase()}?${queryParams}`
+      )
+      return this.transformStationInfo(response)
     } catch (error) {
-      if (error instanceof KnowledgeStationAPIError) throw error;
-      
+      if (error instanceof KnowledgeStationAPIError) throw error
+
       throw new KnowledgeStationAPIError(
         'Failed to fetch station information from Knowledge Station',
         'API_REQUEST_ERROR',
         error
-      );
+      )
     }
   }
 
@@ -160,34 +161,34 @@ export class KnowledgeStationClient {
    */
   async getServiceTracking(request: ServiceTrackingRequest): Promise<ServiceTracking> {
     const queryParams = new URLSearchParams({
-      format: request.format || 'json'
-    });
+      format: request.format || 'json',
+    })
 
-    if (request.serviceId) queryParams.append('service_id', request.serviceId);
-    if (request.headcode) queryParams.append('headcode', request.headcode);
-    if (request.uid) queryParams.append('uid', request.uid);
-    if (request.date) queryParams.append('date', request.date);
+    if (request.serviceId) queryParams.append('service_id', request.serviceId)
+    if (request.headcode) queryParams.append('headcode', request.headcode)
+    if (request.uid) queryParams.append('uid', request.uid)
+    if (request.date) queryParams.append('date', request.date)
 
-    let endpoint = '/service';
+    let endpoint = '/service'
     if (request.serviceId) {
-      endpoint += `/${request.serviceId}`;
+      endpoint += `/${request.serviceId}`
     } else if (request.uid) {
-      endpoint += `/uid/${request.uid}`;
+      endpoint += `/uid/${request.uid}`
     } else if (request.headcode) {
-      endpoint += `/headcode/${request.headcode}`;
+      endpoint += `/headcode/${request.headcode}`
     }
 
     try {
-      const response = await this.makeRequest(`${endpoint}?${queryParams}`);
-      return this.transformServiceTracking(response);
+      const response = await this.makeRequest(`${endpoint}?${queryParams}`)
+      return this.transformServiceTracking(response)
     } catch (error) {
-      if (error instanceof KnowledgeStationAPIError) throw error;
-      
+      if (error instanceof KnowledgeStationAPIError) throw error
+
       throw new KnowledgeStationAPIError(
         'Failed to fetch service tracking from Knowledge Station',
         'API_REQUEST_ERROR',
         error
-      );
+      )
     }
   }
 
@@ -196,52 +197,87 @@ export class KnowledgeStationClient {
    */
   async getDisruptions(request: DisruptionRequest = {}): Promise<DisruptionInfo[]> {
     const queryParams = new URLSearchParams({
-      format: request.format || 'json'
-    });
+      format: request.format || 'json',
+    })
 
-    if (request.severity) queryParams.append('severity', request.severity);
-    if (request.category) queryParams.append('category', request.category);
-    if (request.limit) queryParams.append('limit', request.limit.toString());
+    if (request.severity) queryParams.append('severity', request.severity)
+    if (request.category) queryParams.append('category', request.category)
+    if (request.limit) queryParams.append('limit', request.limit.toString())
 
     try {
-      const response = await this.makeRequest(`/disruptions?${queryParams}`);
-      return (response.disruptions || response || []).map((disruption: KnowledgeStationDisruption) => 
-        this.transformDisruption(disruption)
-      );
+      const response = await this.makeRequest(`/disruptions?${queryParams}`)
+      return (response.disruptions || response || []).map(
+        (disruption: KnowledgeStationDisruption) => this.transformDisruption(disruption)
+      )
     } catch (error) {
-      if (error instanceof KnowledgeStationAPIError) throw error;
-      
+      if (error instanceof KnowledgeStationAPIError) throw error
+
       throw new KnowledgeStationAPIError(
         'Failed to fetch disruptions from Knowledge Station',
         'API_REQUEST_ERROR',
         error
-      );
+      )
     }
+  }
+
+  /**
+   * Search for stations by name or code
+   */
+  async searchStations(request: StationSearchRequest): Promise<StationSummary[]> {
+    if (!this.isEnabled()) {
+      throw new KnowledgeStationAPIError(
+        'Knowledge Station is not enabled or properly configured',
+        'NOT_ENABLED',
+        { enabled: this.config.enabled, hasToken: !!this.config.token }
+      )
+    }
+
+    const q = request.query?.trim()
+    const limit = Math.min(Math.max(request.limit ?? 10, 1), 25)
+
+    if (!q || q.length < 2) {
+      throw new KnowledgeStationAPIError('Query must be at least 2 characters', 'INVALID_QUERY')
+    }
+
+    // Assume upstream endpoint shape; adjust as needed to your KS API
+    const queryParams = new URLSearchParams({ q, limit: String(limit) })
+    const response = await this.makeRequest(`/stations/search?${queryParams.toString()}`)
+
+    // Expected upstream: { stations: [{ crs: string, name: string, region?: string }] }
+    const items: any[] = response?.stations || response || []
+    return items
+      .filter(Boolean)
+      .map((s: any) => ({
+        code: s.crs || s.code || '',
+        name: s.name || '',
+        region: s.region,
+      }))
+      .filter((s: StationSummary) => s.code && s.name)
   }
 
   /**
    * Get data source status
    */
   async getStatus(): Promise<DataSourceStatus['knowledgeStation']> {
-    const startTime = Date.now();
-    
+    const startTime = Date.now()
+
     try {
       // Make a simple health check request
-      await this.makeRequest('/health');
-      
+      await this.makeRequest('/health')
+
       return {
         available: true,
         enabled: this.isEnabled(),
         lastCheck: new Date(),
-        responseTime: Date.now() - startTime
-      };
+        responseTime: Date.now() - startTime,
+      }
     } catch (error) {
       return {
         available: false,
         enabled: this.isEnabled(),
         lastCheck: new Date(),
-        responseTime: Date.now() - startTime
-      };
+        responseTime: Date.now() - startTime,
+      }
     }
   }
 
@@ -254,20 +290,23 @@ export class KnowledgeStationClient {
       name: rawData.name,
       region: rawData.region,
       operator: rawData.operator,
-      coordinates: rawData.latitude && rawData.longitude ? {
-        latitude: rawData.latitude,
-        longitude: rawData.longitude
-      } : undefined,
+      coordinates:
+        rawData.latitude && rawData.longitude
+          ? {
+              latitude: rawData.latitude,
+              longitude: rawData.longitude,
+            }
+          : undefined,
       facilities: rawData.facilities || [],
       accessibility: rawData.accessibility || {
         wheelchairAccess: false,
         assistanceAvailable: false,
         audioAnnouncements: false,
-        inductionLoop: false
+        inductionLoop: false,
       },
       contacts: rawData.contacts || {},
-      lastUpdated: new Date()
-    };
+      lastUpdated: new Date(),
+    }
   }
 
   /**
@@ -283,30 +322,34 @@ export class KnowledgeStationClient {
       route: {
         origin: {
           name: rawData.origin.name,
-          crs: rawData.origin.crs
+          crs: rawData.origin.crs,
         },
         destination: {
           name: rawData.destination.name,
-          crs: rawData.destination.crs
-        }
+          crs: rawData.destination.crs,
+        },
       },
-      currentLocation: rawData.locations && rawData.locations.length > 0 ? {
-        name: rawData.locations[0].name,
-        crs: rawData.locations[0].crs,
-        platform: rawData.locations[0].platform,
-        estimatedDeparture: rawData.locations[0].scheduledDeparture,
-        actualDeparture: rawData.locations[0].actualDeparture
-      } : undefined,
-      nextStops: rawData.locations?.slice(1, 4).map(location => ({
-        name: location.name,
-        crs: location.crs,
-        scheduledArrival: location.scheduledArrival,
-        estimatedArrival: location.actualArrival || location.scheduledArrival,
-        platform: location.platform
-      })) || [],
+      currentLocation:
+        rawData.locations && rawData.locations.length > 0
+          ? {
+              name: rawData.locations[0].name,
+              crs: rawData.locations[0].crs,
+              platform: rawData.locations[0].platform,
+              estimatedDeparture: rawData.locations[0].scheduledDeparture,
+              actualDeparture: rawData.locations[0].actualDeparture,
+            }
+          : undefined,
+      nextStops:
+        rawData.locations?.slice(1, 4).map((location) => ({
+          name: location.name,
+          crs: location.crs,
+          scheduledArrival: location.scheduledArrival,
+          estimatedArrival: location.actualArrival || location.scheduledArrival,
+          platform: location.platform,
+        })) || [],
       status: rawData.status,
-      lastUpdated: new Date(rawData.updated)
-    };
+      lastUpdated: new Date(rawData.updated),
+    }
   }
 
   /**
@@ -323,17 +366,17 @@ export class KnowledgeStationClient {
       timeframe: {
         created: new Date(rawData.created),
         validFrom: rawData.validFrom ? new Date(rawData.validFrom) : undefined,
-        validTo: rawData.validTo ? new Date(rawData.validTo) : undefined
+        validTo: rawData.validTo ? new Date(rawData.validTo) : undefined,
       },
       impact: {
         services: rawData.affectedServices || [],
         operators: rawData.affectedOperators || [],
-        routes: rawData.affectedRoutes || []
+        routes: rawData.affectedRoutes || [],
       },
       alternativeArrangements: rawData.alternativeArrangements,
       lastUpdated: new Date(rawData.updated),
-      source: rawData.source
-    };
+      source: rawData.source,
+    }
   }
 
   /**
@@ -341,39 +384,39 @@ export class KnowledgeStationClient {
    */
   async testConnection(): Promise<boolean> {
     if (!this.isEnabled()) {
-      return false;
+      return false
     }
 
     try {
-      const status = await this.getStatus();
-      return status.available;
+      const status = await this.getStatus()
+      return status.available
     } catch (error) {
-      console.error('Knowledge Station connection test failed:', error);
-      return false;
+      console.error('Knowledge Station connection test failed:', error)
+      return false
     }
   }
 }
 
 // Singleton instance for the application
-let knowledgeStationClient: KnowledgeStationClient | null = null;
+let knowledgeStationClient: KnowledgeStationClient | null = null
 
 export function getKnowledgeStationClient(): KnowledgeStationClient {
   if (!knowledgeStationClient) {
-    const apiUrl = process.env.KNOWLEDGE_STATION_API_URL;
-    const token = process.env.KNOWLEDGE_STATION_API_TOKEN;
-    const enabled = process.env.KNOWLEDGE_STATION_ENABLED !== 'false';
-    
+    const apiUrl = process.env.KNOWLEDGE_STATION_API_URL
+    const token = process.env.KNOWLEDGE_STATION_API_TOKEN
+    const enabled = process.env.KNOWLEDGE_STATION_ENABLED !== 'false'
+
     // Even if not properly configured, create the client (it will check enabled state internally)
     const config: KnowledgeStationConfig = {
       apiUrl: apiUrl || '',
       token: token || '',
-      enabled
-    };
+      enabled,
+    }
 
-    knowledgeStationClient = new KnowledgeStationClient(config);
+    knowledgeStationClient = new KnowledgeStationClient(config)
   }
 
-  return knowledgeStationClient;
+  return knowledgeStationClient
 }
 
-export default KnowledgeStationClient;
+export default KnowledgeStationClient

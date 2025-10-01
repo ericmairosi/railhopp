@@ -1,0 +1,33 @@
+{
+  "name": "@railhopp/darwin-broker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Darwin Push Port broker: Kafka consumer (Confluent Cloud) + REST/WS for Railhopp",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p .",
+    "start": "tsx src/index.ts",
+    "dev": "tsx src/index.ts",
+    "build:map": "tsx src/build-tiploc-map.ts",
+    "build:map:corpus": "tsx src/build-tiploc-map-from-corpus.ts"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "kafkajs": "^2.2.4",
+    "pino": "^9.3.2",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.30",
+    "@types/ws": "^8.5.10",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

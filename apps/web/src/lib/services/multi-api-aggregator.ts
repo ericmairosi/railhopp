@@ -2,122 +2,112 @@
 // Combines data from Darwin, Network Rail, Knowledge Station, and National Rail APIs
 // Provides intelligent data merging and conflict resolution
 
-import { getDarwinClient } from '@/lib/darwin/client';
-import { getNetworkRailClient } from '@/lib/network-rail/client';
-import { getKnowledgeStationClient } from '@/lib/knowledge-station/client';
-import { getNationalRailClient } from '@/lib/national-rail/client';
-import { 
-  LiveStationBoard, 
-  LiveDeparture, 
-  TrainServiceDetails 
-} from '@/lib/darwin/types';
-import { 
-  EnhancedStationInfo,
-  DisruptionInfo 
-} from '@/lib/knowledge-station/types';
-import { 
-  EnhancedTrainService,
-  TrainMovement 
-} from '@/lib/network-rail/types';
+import { getDarwinClient } from '@/lib/darwin/client'
+import { getNetworkRailClient } from '@/lib/network-rail/client'
+import { getKnowledgeStationClient } from '@/lib/knowledge-station/client'
+import { getNationalRailClient } from '@/lib/national-rail/client'
+import { LiveStationBoard, LiveDeparture, TrainServiceDetails } from '@/lib/darwin/types'
+import { EnhancedStationInfo, DisruptionInfo } from '@/lib/knowledge-station/types'
+import { EnhancedTrainService, TrainMovement } from '@/lib/network-rail/types'
 
 export interface MultiAPIRequest {
-  crs: string;
-  numRows?: number;
-  filterCrs?: string;
-  filterType?: 'to' | 'from';
-  timeOffset?: number;
-  timeWindow?: number;
-  includeEnhancedData?: boolean;
-  includeHistoricalData?: boolean;
-  includeRealTimePosition?: boolean;
+  crs: string
+  numRows?: number
+  filterCrs?: string
+  filterType?: 'to' | 'from'
+  timeOffset?: number
+  timeWindow?: number
+  includeEnhancedData?: boolean
+  includeHistoricalData?: boolean
+  includeRealTimePosition?: boolean
 }
 
 export interface EnhancedDeparture extends LiveDeparture {
   // Network Rail enhancements
   realTimePosition?: {
-    stanox: string;
-    berth?: string;
-    lastUpdate: Date;
-  };
-  movements?: TrainMovement[];
-  
+    stanox: string
+    berth?: string
+    lastUpdate: Date
+  }
+  movements?: TrainMovement[]
+
   // Knowledge Station enhancements
-  facilityAlerts?: string[];
-  accessibilityInfo?: any;
-  
+  facilityAlerts?: string[]
+  accessibilityInfo?: any
+
   // Aggregated data quality
   dataQuality: {
-    darwinFresh: boolean;
-    networkRailFresh: boolean;
-    knowledgeStationFresh: boolean;
-    confidence: number; // 0-100
-  };
+    darwinFresh: boolean
+    networkRailFresh: boolean
+    knowledgeStationFresh: boolean
+    confidence: number // 0-100
+  }
 }
 
 export interface AggregatedStationBoard {
-  stationName: string;
-  stationCode: string;
-  departures: EnhancedDeparture[];
-  generatedAt: string;
-  
+  stationName: string
+  stationCode: string
+  departures: EnhancedDeparture[]
+  generatedAt: string
+
   // Data source information
   dataSources: {
-    primary: string;
-    enhanced: string[];
-    failed: string[];
-  };
-  
+    primary: string
+    enhanced: string[]
+    failed: string[]
+  }
+
   // Enhanced station information
-  stationInfo?: EnhancedStationInfo;
-  disruptions?: DisruptionInfo[];
-  
+  stationInfo?: EnhancedStationInfo
+  disruptions?: DisruptionInfo[]
+
   // Data quality metrics
   dataQuality: {
-    overall: number;
-    realTimeAccuracy: number;
-    completeness: number;
-  };
-  
+    overall: number
+    realTimeAccuracy: number
+    completeness: number
+  }
+
   // Metadata
   metadata: {
-    cacheHit: boolean;
-    processingTime: number;
-    apiCallsUsed: number;
-  };
+    cacheHit: boolean
+    processingTime: number
+    apiCallsUsed: number
+  }
 }
 
 export class MultiAPIAggregator {
-  private darwinClient = getDarwinClient();
-  private networkRailClient = getNetworkRailClient();
-  private knowledgeStationClient = getKnowledgeStationClient();
-  private nationalRailClient = getNationalRailClient();
-  
+  private darwinClient = getDarwinClient()
+  private networkRailClient = getNetworkRailClient()
+  private knowledgeStationClient = getKnowledgeStationClient()
+  private nationalRailClient = getNationalRailClient()
+
   // Cache for reducing API calls
-  private cache = new Map<string, { data: any; expires: number }>();
-  private readonly cacheTimeout = 30000; // 30 seconds
+  private cache = new Map<string, { data: any; expires: number }>()
+  private readonly cacheTimeout = 30000 // 30 seconds
 
   /**
    * Get enhanced departure board with data from multiple APIs
    */
   async getDepartures(request: MultiAPIRequest): Promise<AggregatedStationBoard> {
-    const startTime = Date.now();
-    const cacheKey = this.generateCacheKey('departures', request);
-    
+    const startTime = Date.now()
+    const cacheKey = this.generateCacheKey('departures', request)
+
     // Check cache first
-    const cached = this.getFromCache(cacheKey);
+    const cached = this.getFromCache(cacheKey)
     if (cached) {
-      cached.metadata.cacheHit = true;
-      return cached;
+      cached.metadata.cacheHit = true
+      return cached
     }
 
     const dataSources = {
       primary: 'darwin',
       enhanced: [] as string[],
-      failed: [] as string[]
-    };
+      failed: [] as string[],
+    }
 
-    let apiCallsUsed = 0;
-    
+    let apiCallsUsed = 0
+
     try {
       // 1. Get primary data from Darwin (user's preferred source)
       const darwinBoard = await this.darwinClient.getStationBoard({
@@ -126,13 +116,13 @@ export class MultiAPIAggregator {
         filterCrs: request.filterCrs,
         filterType: request.filterType,
         timeOffset: request.timeOffset,
-        timeWindow: request.timeWindow
-      });
-      
-      apiCallsUsed++;
-      
+        timeWindow: request.timeWindow,
+      })
+
+      apiCallsUsed++
+
       // 2. Initialize enhanced departures
-      const enhancedDepartures: EnhancedDeparture[] = darwinBoard.departures.map(dep => ({
+      const enhancedDepartures: EnhancedDeparture[] = darwinBoard.departures.map((dep) => ({
         ...dep,
         realTimePosition: undefined,
         movements: undefined,
@@ -142,53 +132,53 @@ export class MultiAPIAggregator {
           darwinFresh: true,
           networkRailFresh: false,
           knowledgeStationFresh: false,
-          confidence: 75 // Base confidence from Darwin
-        }
-      }));
+          confidence: 75, // Base confidence from Darwin
+        },
+      }))
 
       // 3. Enhance with Network Rail data if requested
       if (request.includeRealTimePosition && this.networkRailClient) {
         try {
-          await this.enhanceWithNetworkRail(enhancedDepartures);
-          dataSources.enhanced.push('network-rail');
-          apiCallsUsed++;
+          await this.enhanceWithNetworkRail(enhancedDepartures)
+          dataSources.enhanced.push('network-rail')
+          apiCallsUsed++
         } catch (error) {
-          console.warn('Network Rail enhancement failed:', error);
-          dataSources.failed.push('network-rail');
+          console.warn('Network Rail enhancement failed:', error)
+          dataSources.failed.push('network-rail')
         }
       }
 
       // 4. Enhance with Knowledge Station data if requested
-      let stationInfo: EnhancedStationInfo | undefined;
-      let disruptions: DisruptionInfo[] | undefined;
-      
+      let stationInfo: EnhancedStationInfo | undefined
+      let disruptions: DisruptionInfo[] | undefined
+
       if (request.includeEnhancedData && this.knowledgeStationClient.isEnabled()) {
         try {
           const [stationData, disruptionData] = await Promise.allSettled([
             this.knowledgeStationClient.getStationInfo({ crs: request.crs }),
-            this.knowledgeStationClient.getDisruptions({ limit: 10 })
-          ]);
+            this.knowledgeStationClient.getDisruptions({ limit: 10 }),
+          ])
 
           if (stationData.status === 'fulfilled') {
-            stationInfo = stationData.value;
-            dataSources.enhanced.push('knowledge-station');
+            stationInfo = stationData.value
+            dataSources.enhanced.push('knowledge-station')
           }
 
           if (disruptionData.status === 'fulfilled') {
-            disruptions = disruptionData.value.filter(d => 
-              d.impact.routes.some(r => r.origin === request.crs || r.destination === request.crs)
-            );
+            disruptions = disruptionData.value.filter((d) =>
+              d.impact.routes.some((r) => r.origin === request.crs || r.destination === request.crs)
+            )
           }
 
-          apiCallsUsed += 2;
+          apiCallsUsed += 2
         } catch (error) {
-          console.warn('Knowledge Station enhancement failed:', error);
-          dataSources.failed.push('knowledge-station');
+          console.warn('Knowledge Station enhancement failed:', error)
+          dataSources.failed.push('knowledge-station')
         }
       }
 
       // 5. Calculate data quality metrics
-      const dataQuality = this.calculateDataQuality(enhancedDepartures);
+      const dataQuality = this.calculateDataQuality(enhancedDepartures)
 
       // 6. Build aggregated response
       const aggregatedBoard: AggregatedStationBoard = {
@@ -203,18 +193,18 @@ export class MultiAPIAggregator {
         metadata: {
           cacheHit: false,
           processingTime: Date.now() - startTime,
-          apiCallsUsed
-        }
-      };
+          apiCallsUsed,
+        },
+      }
 
       // Cache the result
-      this.setCache(cacheKey, aggregatedBoard);
-      
-      return aggregatedBoard;
+      this.setCache(cacheKey, aggregatedBoard)
 
+      return aggregatedBoard
     } catch (error) {
-      console.error('Multi-API aggregation failed:', error);
-      throw new Error('Failed to aggregate departure data from multiple sources');
+      console.error('Multi-API aggregation failed:', error)
+      // Re-throw the original error so API routes can return structured errors
+      throw error
     }
   }
 
@@ -227,25 +217,27 @@ export class MultiAPIAggregator {
         if (departure.serviceID) {
           const networkRailService = await this.networkRailClient.getEnhancedTrainService(
             departure.serviceID
-          );
-          
+          )
+
           if (networkRailService) {
-            departure.realTimePosition = networkRailService.currentLocation ? {
-              stanox: networkRailService.currentLocation.stanox,
-              berth: networkRailService.currentLocation.berth,
-              lastUpdate: networkRailService.lastUpdated
-            } : undefined;
-            
-            departure.movements = networkRailService.movements;
-            departure.dataQuality.networkRailFresh = true;
-            departure.dataQuality.confidence = Math.min(
-              departure.dataQuality.confidence + 15, 
-              100
-            );
+            departure.realTimePosition = networkRailService.currentLocation
+              ? {
+                  stanox: networkRailService.currentLocation.stanox,
+                  berth: networkRailService.currentLocation.berth,
+                  lastUpdate: networkRailService.lastUpdated,
+                }
+              : undefined
+
+            departure.movements = networkRailService.movements
+            departure.dataQuality.networkRailFresh = true
+            departure.dataQuality.confidence = Math.min(departure.dataQuality.confidence + 15, 100)
           }
         }
       } catch (error) {
-        console.warn(`Failed to enhance departure ${departure.serviceID} with Network Rail data:`, error);
+        console.warn(
+          `Failed to enhance departure ${departure.serviceID} with Network Rail data:`,
+          error
+        )
       }
     }
   }
@@ -254,56 +246,50 @@ export class MultiAPIAggregator {
    * Calculate overall data quality metrics
    */
   private calculateDataQuality(departures: EnhancedDeparture[]): {
-    overall: number;
-    realTimeAccuracy: number;
-    completeness: number;
+    overall: number
+    realTimeAccuracy: number
+    completeness: number
   } {
     if (departures.length === 0) {
-      return { overall: 0, realTimeAccuracy: 0, completeness: 0 };
+      return { overall: 0, realTimeAccuracy: 0, completeness: 0 }
     }
 
-    const totalConfidence = departures.reduce((sum, dep) => 
-      sum + dep.dataQuality.confidence, 0
-    );
-    const overall = Math.round(totalConfidence / departures.length);
+    const totalConfidence = departures.reduce((sum, dep) => sum + dep.dataQuality.confidence, 0)
+    const overall = Math.round(totalConfidence / departures.length)
 
-    const withRealTime = departures.filter(dep => 
-      dep.realTimePosition || dep.movements
-    ).length;
-    const realTimeAccuracy = Math.round((withRealTime / departures.length) * 100);
+    const withRealTime = departures.filter((dep) => dep.realTimePosition || dep.movements).length
+    const realTimeAccuracy = Math.round((withRealTime / departures.length) * 100)
 
-    const withCompleteData = departures.filter(dep =>
-      dep.std && dep.etd && dep.platform
-    ).length;
-    const completeness = Math.round((withCompleteData / departures.length) * 100);
+    const withCompleteData = departures.filter((dep) => dep.std && dep.etd && dep.platform).length
+    const completeness = Math.round((withCompleteData / departures.length) * 100)
 
     return {
       overall,
       realTimeAccuracy,
-      completeness
-    };
+      completeness,
+    }
   }
 
   /**
    * Generate cache key for requests
    */
   private generateCacheKey(type: string, request: any): string {
-    const key = `${type}:${JSON.stringify(request)}`;
-    return key;
+    const key = `${type}:${JSON.stringify(request)}`
+    return key
   }
 
   /**
    * Get data from cache
    */
   private getFromCache(key: string): any | null {
-    const cached = this.cache.get(key);
+    const cached = this.cache.get(key)
     if (cached && cached.expires > Date.now()) {
-      return cached.data;
+      return cached.data
     }
     if (cached) {
-      this.cache.delete(key);
+      this.cache.delete(key)
     }
-    return null;
+    return null
   }
 
   /**
@@ -312,18 +298,18 @@ export class MultiAPIAggregator {
   private setCache(key: string, data: any): void {
     this.cache.set(key, {
       data,
-      expires: Date.now() + this.cacheTimeout
-    });
+      expires: Date.now() + this.cacheTimeout,
+    })
   }
 
   /**
    * Clear expired cache entries
    */
   private clearExpiredCache(): void {
-    const now = Date.now();
+    const now = Date.now()
     for (const [key, value] of this.cache.entries()) {
       if (value.expires <= now) {
-        this.cache.delete(key);
+        this.cache.delete(key)
       }
     }
   }
@@ -332,68 +318,72 @@ export class MultiAPIAggregator {
    * Get service status from all APIs
    */
   async getServiceStatus(): Promise<{
-    darwin: { available: boolean; responseTime: number };
-    networkRail: { available: boolean; responseTime: number };
-    knowledgeStation: { available: boolean; responseTime: number };
+    darwin: { available: boolean; responseTime: number }
+    networkRail: { available: boolean; responseTime: number }
+    knowledgeStation: { available: boolean; responseTime: number }
   }> {
     const [darwinStatus, networkRailStatus, ksStatus] = await Promise.allSettled([
       this.testDarwinConnection(),
       this.testNetworkRailConnection(),
-      this.testKnowledgeStationConnection()
-    ]);
+      this.testKnowledgeStationConnection(),
+    ])
 
     return {
-      darwin: darwinStatus.status === 'fulfilled' 
-        ? darwinStatus.value 
-        : { available: false, responseTime: 0 },
-      networkRail: networkRailStatus.status === 'fulfilled'
-        ? networkRailStatus.value
-        : { available: false, responseTime: 0 },
-      knowledgeStation: ksStatus.status === 'fulfilled'
-        ? ksStatus.value
-        : { available: false, responseTime: 0 }
-    };
+      darwin:
+        darwinStatus.status === 'fulfilled'
+          ? darwinStatus.value
+          : { available: false, responseTime: 0 },
+      networkRail:
+        networkRailStatus.status === 'fulfilled'
+          ? networkRailStatus.value
+          : { available: false, responseTime: 0 },
+      knowledgeStation:
+        ksStatus.status === 'fulfilled' ? ksStatus.value : { available: false, responseTime: 0 },
+    }
   }
 
   private async testDarwinConnection(): Promise<{ available: boolean; responseTime: number }> {
-    const startTime = Date.now();
+    const startTime = Date.now()
     try {
-      await this.darwinClient.testConnection();
-      return { available: true, responseTime: Date.now() - startTime };
+      await this.darwinClient.testConnection()
+      return { available: true, responseTime: Date.now() - startTime }
     } catch {
-      return { available: false, responseTime: Date.now() - startTime };
+      return { available: false, responseTime: Date.now() - startTime }
     }
   }
 
   private async testNetworkRailConnection(): Promise<{ available: boolean; responseTime: number }> {
-    const startTime = Date.now();
+    const startTime = Date.now()
     try {
-      const available = await this.networkRailClient.testConnection();
-      return { available, responseTime: Date.now() - startTime };
+      const available = await this.networkRailClient.testConnection()
+      return { available, responseTime: Date.now() - startTime }
     } catch {
-      return { available: false, responseTime: Date.now() - startTime };
+      return { available: false, responseTime: Date.now() - startTime }
     }
   }
 
-  private async testKnowledgeStationConnection(): Promise<{ available: boolean; responseTime: number }> {
-    const startTime = Date.now();
+  private async testKnowledgeStationConnection(): Promise<{
+    available: boolean
+    responseTime: number
+  }> {
+    const startTime = Date.now()
     try {
-      const available = await this.knowledgeStationClient.testConnection();
-      return { available, responseTime: Date.now() - startTime };
+      const available = await this.knowledgeStationClient.testConnection()
+      return { available, responseTime: Date.now() - startTime }
     } catch {
-      return { available: false, responseTime: Date.now() - startTime };
+      return { available: false, responseTime: Date.now() - startTime }
     }
   }
 }
 
 // Singleton instance
-let multiAPIAggregator: MultiAPIAggregator | null = null;
+let multiAPIAggregator: MultiAPIAggregator | null = null
 
 export function getMultiAPIAggregator(): MultiAPIAggregator {
   if (!multiAPIAggregator) {
-    multiAPIAggregator = new MultiAPIAggregator();
+    multiAPIAggregator = new MultiAPIAggregator()
   }
-  return multiAPIAggregator;
+  return multiAPIAggregator
 }
 
-export default MultiAPIAggregator;
+export default MultiAPIAggregator

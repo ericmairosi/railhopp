@@ -1,7 +1,7 @@
 // Network Rail API Client for Train Movements, VSTP, SMART, CORPUS
 // Handles STOMP feeds and REST API calls for Network Rail data
 
-import { 
+import {
   NetworkRailConfig,
   TrainMovementMessage,
   VSTPMessage,
@@ -11,22 +11,22 @@ import {
   ScheduleMessage,
   EnhancedTrainService,
   NetworkRailAPIError,
-  NetworkRailStatus
-} from './types';
+  NetworkRailStatus,
+} from './types'
 
 export class NetworkRailClient {
-  private config: NetworkRailConfig;
-  private stompClient: any = null;
-  private isConnected = false;
-  private reconnectAttempts = 0;
-  private maxReconnectAttempts = 10;
+  private config: NetworkRailConfig
+  private stompClient: any = null
+  private isConnected = false
+  private reconnectAttempts = 0
+  private maxReconnectAttempts = 10
 
   constructor(config: NetworkRailConfig) {
     this.config = {
       timeout: 15000,
       retries: 3,
-      ...config
-    };
+      ...config,
+    }
   }
 
   /**
@@ -35,47 +35,48 @@ export class NetworkRailClient {
   async initializeSTOMPConnection(): Promise<void> {
     try {
       // Dynamic import for STOMP client (Node.js environment)
-      const stompit = require('stompit');
-      
+      const stompit = require('stompit')
+
       const connectOptions = {
         host: this.extractHostFromUrl(this.config.stompUrl),
         port: this.extractPortFromUrl(this.config.stompUrl),
         connectHeaders: {
-          'host': '/',
-          'login': this.config.username,
-          'passcode': this.config.password,
-          'heart-beat': '5000,5000'
-        }
-      };
+          host: '/',
+          login: this.config.username,
+          passcode: this.config.password,
+          'heart-beat': '5000,5000',
+        },
+      }
 
       this.stompClient = await new Promise((resolve, reject) => {
         stompit.connect(connectOptions, (error: any, client: any) => {
           if (error) {
-            reject(new NetworkRailAPIError(
-              'Failed to connect to Network Rail STOMP server',
-              'STOMP_CONNECTION_ERROR',
-              error
-            ));
-            return;
+            reject(
+              new NetworkRailAPIError(
+                'Failed to connect to Network Rail STOMP server',
+                'STOMP_CONNECTION_ERROR',
+                error
+              )
+            )
+            return
           }
-          resolve(client);
-        });
-      });
+          resolve(client)
+        })
+      })
 
-      this.isConnected = true;
-      this.reconnectAttempts = 0;
-      console.log('Network Rail STOMP connection established');
+      this.isConnected = true
+      this.reconnectAttempts = 0
+      console.log('Network Rail STOMP connection established')
 
       // Set up connection error handlers
-      this.stompClient.on('error', this.handleSTOMPError.bind(this));
-      this.stompClient.on('disconnect', this.handleSTOMPDisconnect.bind(this));
-
+      this.stompClient.on('error', this.handleSTOMPError.bind(this))
+      this.stompClient.on('disconnect', this.handleSTOMPDisconnect.bind(this))
     } catch (error) {
       throw new NetworkRailAPIError(
         'Failed to initialize STOMP connection',
         'INITIALIZATION_ERROR',
         error
-      );
+      )
     }
   }
 
@@ -84,41 +85,38 @@ export class NetworkRailClient {
    */
   subscribeToTrainMovements(callback: (movement: TrainMovementMessage) => void): void {
     if (!this.isConnected || !this.stompClient) {
-      throw new NetworkRailAPIError(
-        'STOMP connection not established',
-        'NOT_CONNECTED'
-      );
+      throw new NetworkRailAPIError('STOMP connection not established', 'NOT_CONNECTED')
     }
 
     const subscribeHeaders = {
       destination: '/topic/TRAIN_MVT_ALL_TOC',
-      ack: 'client-individual'
-    };
+      ack: 'client-individual',
+    }
 
     this.stompClient.subscribe(subscribeHeaders, (error: any, message: any) => {
       if (error) {
-        console.error('Train movements subscription error:', error);
-        return;
+        console.error('Train movements subscription error:', error)
+        return
       }
 
       try {
         message.readString('utf-8', (error: any, body: string) => {
           if (error) {
-            console.error('Error reading train movement message:', error);
-            return;
+            console.error('Error reading train movement message:', error)
+            return
           }
 
-          const movements = JSON.parse(body);
+          const movements = JSON.parse(body)
           movements.forEach((movement: TrainMovementMessage) => {
-            callback(movement);
-          });
+            callback(movement)
+          })
 
-          message.ack();
-        });
+          message.ack()
+        })
       } catch (parseError) {
-        console.error('Error parsing train movement data:', parseError);
+        console.error('Error parsing train movement data:', parseError)
       }
-    });
+    })
   }
 
   /**
@@ -126,83 +124,80 @@ export class NetworkRailClient {
    */
   subscribeToVSTP(callback: (vstp: VSTPMessage) => void): void {
     if (!this.isConnected || !this.stompClient) {
-      throw new NetworkRailAPIError(
-        'STOMP connection not established',
-        'NOT_CONNECTED'
-      );
+      throw new NetworkRailAPIError('STOMP connection not established', 'NOT_CONNECTED')
     }
 
     const subscribeHeaders = {
       destination: '/topic/VSTP_ALL',
-      ack: 'client-individual'
-    };
+      ack: 'client-individual',
+    }
 
     this.stompClient.subscribe(subscribeHeaders, (error: any, message: any) => {
       if (error) {
-        console.error('VSTP subscription error:', error);
-        return;
+        console.error('VSTP subscription error:', error)
+        return
       }
 
       try {
         message.readString('utf-8', (error: any, body: string) => {
           if (error) {
-            console.error('Error reading VSTP message:', error);
-            return;
+            console.error('Error reading VSTP message:', error)
+            return
           }
 
-          const vstpData = JSON.parse(body);
+          const vstpData = JSON.parse(body)
           vstpData.forEach((vstp: VSTPMessage) => {
-            callback(vstp);
-          });
+            callback(vstp)
+          })
 
-          message.ack();
-        });
+          message.ack()
+        })
       } catch (parseError) {
-        console.error('Error parsing VSTP data:', parseError);
+        console.error('Error parsing VSTP data:', parseError)
       }
-    });
+    })
   }
 
   /**
    * Subscribe to Train Describer feed
    */
-  subscribeToTrainDescriber(areaId: string, callback: (describer: TrainDescriberMessage) => void): void {
+  subscribeToTrainDescriber(
+    areaId: string,
+    callback: (describer: TrainDescriberMessage) => void
+  ): void {
     if (!this.isConnected || !this.stompClient) {
-      throw new NetworkRailAPIError(
-        'STOMP connection not established',
-        'NOT_CONNECTED'
-      );
+      throw new NetworkRailAPIError('STOMP connection not established', 'NOT_CONNECTED')
     }
 
     const subscribeHeaders = {
       destination: `/topic/TD_${areaId}_SIG_AREA`,
-      ack: 'client-individual'
-    };
+      ack: 'client-individual',
+    }
 
     this.stompClient.subscribe(subscribeHeaders, (error: any, message: any) => {
       if (error) {
-        console.error('Train Describer subscription error:', error);
-        return;
+        console.error('Train Describer subscription error:', error)
+        return
       }
 
       try {
         message.readString('utf-8', (error: any, body: string) => {
           if (error) {
-            console.error('Error reading Train Describer message:', error);
-            return;
+            console.error('Error reading Train Describer message:', error)
+            return
           }
 
-          const describerData = JSON.parse(body);
+          const describerData = JSON.parse(body)
           describerData.forEach((describer: TrainDescriberMessage) => {
-            callback(describer);
-          });
+            callback(describer)
+          })
 
-          message.ack();
-        });
+          message.ack()
+        })
       } catch (parseError) {
-        console.error('Error parsing Train Describer data:', parseError);
+        console.error('Error parsing Train Describer data:', parseError)
       }
-    });
+    })
   }
 
   /**
@@ -210,14 +205,10 @@ export class NetworkRailClient {
    */
   async getCorpusData(): Promise<CorpusEntry[]> {
     try {
-      const response = await this.makeHTTPRequest('/api/corpus');
-      return response.CORPUS || [];
+      const response = await this.makeHTTPRequest('/api/corpus')
+      return response.CORPUS || []
     } catch (error) {
-      throw new NetworkRailAPIError(
-        'Failed to fetch CORPUS data',
-        'CORPUS_ERROR',
-        error
-      );
+      throw new NetworkRailAPIError('Failed to fetch CORPUS data', 'CORPUS_ERROR', error)
     }
   }
 
@@ -226,14 +217,10 @@ export class NetworkRailClient {
    */
   async getSmartData(): Promise<SmartEntry[]> {
     try {
-      const response = await this.makeHTTPRequest('/api/smart');
-      return response.SMART || [];
+      const response = await this.makeHTTPRequest('/api/smart')
+      return response.SMART || []
     } catch (error) {
-      throw new NetworkRailAPIError(
-        'Failed to fetch SMART data',
-        'SMART_ERROR',
-        error
-      );
+      throw new NetworkRailAPIError('Failed to fetch SMART data', 'SMART_ERROR', error)
     }
   }
 
@@ -242,16 +229,10 @@ export class NetworkRailClient {
    */
   async getScheduleData(trainUid: string, date: string): Promise<ScheduleMessage | null> {
     try {
-      const response = await this.makeHTTPRequest(
-        `/api/schedule/${trainUid}/${date}`
-      );
-      return response.schedule || null;
+      const response = await this.makeHTTPRequest(`/api/schedule/${trainUid}/${date}`)
+      return response.schedule || null
     } catch (error) {
-      throw new NetworkRailAPIError(
-        'Failed to fetch schedule data',
-        'SCHEDULE_ERROR',
-        error
-      );
+      throw new NetworkRailAPIError('Failed to fetch schedule data', 'SCHEDULE_ERROR', error)
     }
   }
 
@@ -262,10 +243,10 @@ export class NetworkRailClient {
     try {
       // This would combine data from multiple sources
       // Implementation would aggregate movements, schedule, and other data
-      const response = await this.makeHTTPRequest(`/api/train/${trainId}`);
-      
+      const response = await this.makeHTTPRequest(`/api/train/${trainId}`)
+
       if (!response.train) {
-        return null;
+        return null
       }
 
       return {
@@ -282,14 +263,14 @@ export class NetworkRailClient {
         toc: response.train.toc,
         serviceCode: response.train.service_code,
         lastUpdated: new Date(),
-        dataSource: 'network-rail'
-      };
+        dataSource: 'network-rail',
+      }
     } catch (error) {
       throw new NetworkRailAPIError(
         'Failed to fetch enhanced train service',
         'SERVICE_ERROR',
         error
-      );
+      )
     }
   }
 
@@ -297,32 +278,32 @@ export class NetworkRailClient {
    * Get Network Rail service status
    */
   async getStatus(): Promise<NetworkRailStatus> {
-    const startTime = Date.now();
-    
+    const startTime = Date.now()
+
     try {
-      const response = await this.makeHTTPRequest('/api/health');
-      
+      const response = await this.makeHTTPRequest('/api/health')
+
       return {
         feeds: {
           movements: response.feeds?.movements || false,
           vstp: response.feeds?.vstp || false,
           describer: response.feeds?.describer || false,
-          schedule: response.feeds?.schedule || false
+          schedule: response.feeds?.schedule || false,
         },
         lastHealthCheck: new Date(),
-        responseTime: Date.now() - startTime
-      };
+        responseTime: Date.now() - startTime,
+      }
     } catch (error) {
       return {
         feeds: {
           movements: false,
           vstp: false,
           describer: false,
-          schedule: false
+          schedule: false,
         },
         lastHealthCheck: new Date(),
-        responseTime: Date.now() - startTime
-      };
+        responseTime: Date.now() - startTime,
+      }
     }
   }
 
@@ -331,11 +312,11 @@ export class NetworkRailClient {
    */
   async testConnection(): Promise<boolean> {
     try {
-      const status = await this.getStatus();
-      return Object.values(status.feeds).some(feed => feed);
+      const status = await this.getStatus()
+      return Object.values(status.feeds).some((feed) => feed)
     } catch (error) {
-      console.error('Network Rail connection test failed:', error);
-      return false;
+      console.error('Network Rail connection test failed:', error)
+      return false
     }
   }
 
@@ -343,50 +324,52 @@ export class NetworkRailClient {
    * Make HTTP request to Network Rail API
    */
   private async makeHTTPRequest(endpoint: string, options: RequestInit = {}): Promise<any> {
-    const url = `${this.config.apiUrl}${endpoint}`;
-    const credentials = Buffer.from(`${this.config.username}:${this.config.password}`).toString('base64');
-    
+    const url = `${this.config.apiUrl}${endpoint}`
+    const credentials = Buffer.from(`${this.config.username}:${this.config.password}`).toString(
+      'base64'
+    )
+
     const requestOptions: RequestInit = {
       headers: {
-        'Authorization': `Basic ${credentials}`,
+        Authorization: `Basic ${credentials}`,
         'Content-Type': 'application/json',
         'User-Agent': 'Railhopp-NetworkRail-Client/1.0',
-        ...options.headers
+        ...options.headers,
       },
-      timeout: this.config.timeout,
-      ...options
-    };
+      ...options,
+    }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
-    requestOptions.signal = controller.signal;
+    const controller = new AbortController()
+    const timeoutMs = this.config.timeout ?? 30000
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+    requestOptions.signal = controller.signal
 
     try {
-      const response = await fetch(url, requestOptions);
-      clearTimeout(timeoutId);
+      const response = await fetch(url, requestOptions)
+      clearTimeout(timeoutId)
 
       if (!response.ok) {
-        const errorBody = await response.text();
+        const errorBody = await response.text()
         throw new NetworkRailAPIError(
           `HTTP ${response.status}: ${response.statusText}`,
           'HTTP_ERROR',
           { status: response.status, body: errorBody, url }
-        );
+        )
       }
 
-      return await response.json();
+      return await response.json()
     } catch (error) {
-      clearTimeout(timeoutId);
-      
+      clearTimeout(timeoutId)
+
       if (error instanceof NetworkRailAPIError) {
-        throw error;
+        throw error
       }
-      
+
       throw new NetworkRailAPIError(
         'Failed to make HTTP request to Network Rail API',
         'REQUEST_ERROR',
         error
-      );
+      )
     }
   }
 
@@ -394,18 +377,18 @@ export class NetworkRailClient {
    * Handle STOMP connection errors
    */
   private handleSTOMPError(error: any): void {
-    console.error('Network Rail STOMP error:', error);
-    this.isConnected = false;
-    this.attemptReconnection();
+    console.error('Network Rail STOMP error:', error)
+    this.isConnected = false
+    this.attemptReconnection()
   }
 
   /**
    * Handle STOMP disconnection
    */
   private handleSTOMPDisconnect(): void {
-    console.warn('Network Rail STOMP disconnected');
-    this.isConnected = false;
-    this.attemptReconnection();
+    console.warn('Network Rail STOMP disconnected')
+    this.isConnected = false
+    this.attemptReconnection()
   }
 
   /**
@@ -413,40 +396,42 @@ export class NetworkRailClient {
    */
   private async attemptReconnection(): Promise<void> {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('Max reconnection attempts reached for Network Rail STOMP');
-      return;
+      console.error('Max reconnection attempts reached for Network Rail STOMP')
+      return
     }
 
-    this.reconnectAttempts++;
-    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
-    
-    console.log(`Attempting Network Rail STOMP reconnection in ${delay}ms (attempt ${this.reconnectAttempts})`);
-    
+    this.reconnectAttempts++
+    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000)
+
+    console.log(
+      `Attempting Network Rail STOMP reconnection in ${delay}ms (attempt ${this.reconnectAttempts})`
+    )
+
     setTimeout(async () => {
       try {
-        await this.initializeSTOMPConnection();
-        console.log('Network Rail STOMP reconnection successful');
+        await this.initializeSTOMPConnection()
+        console.log('Network Rail STOMP reconnection successful')
       } catch (error) {
-        console.error('Network Rail STOMP reconnection failed:', error);
-        this.attemptReconnection();
+        console.error('Network Rail STOMP reconnection failed:', error)
+        this.attemptReconnection()
       }
-    }, delay);
+    }, delay)
   }
 
   /**
    * Extract host from URL
    */
   private extractHostFromUrl(url: string): string {
-    const match = url.match(/^(?:https?:\/\/)?([^:\/\s]+)/);
-    return match ? match[1] : 'localhost';
+    const match = url.match(/^(?:https?:\/\/)?([^:\/\s]+)/)
+    return match ? match[1] : 'localhost'
   }
 
   /**
    * Extract port from URL
    */
   private extractPortFromUrl(url: string): number {
-    const match = url.match(/:(\d+)/);
-    return match ? parseInt(match[1]) : 61613; // Default STOMP port
+    const match = url.match(/:(\d+)/)
+    return match ? parseInt(match[1]) : 61613 // Default STOMP port
   }
 
   /**
@@ -454,15 +439,15 @@ export class NetworkRailClient {
    */
   disconnect(): void {
     if (this.stompClient && this.isConnected) {
-      this.stompClient.disconnect();
-      this.isConnected = false;
-      console.log('Network Rail STOMP connection closed');
+      this.stompClient.disconnect()
+      this.isConnected = false
+      console.log('Network Rail STOMP connection closed')
     }
   }
 }
 
 // Singleton instance for the application
-let networkRailClient: NetworkRailClient | null = null;
+let networkRailClient: NetworkRailClient | null = null
 
 export function getNetworkRailClient(): NetworkRailClient {
   if (!networkRailClient) {
@@ -470,13 +455,13 @@ export function getNetworkRailClient(): NetworkRailClient {
       username: process.env.NETWORK_RAIL_USERNAME || '',
       password: process.env.NETWORK_RAIL_PASSWORD || '',
       apiUrl: process.env.NETWORK_RAIL_API_URL || 'https://api.rtt.io/api/v1/json',
-      stompUrl: process.env.NETWORK_RAIL_STOMP_URL || 'stomp://datafeeds.networkrail.co.uk:61618'
-    };
+      stompUrl: process.env.NETWORK_RAIL_STOMP_URL || 'stomp://datafeeds.networkrail.co.uk:61618',
+    }
 
-    networkRailClient = new NetworkRailClient(config);
+    networkRailClient = new NetworkRailClient(config)
   }
 
-  return networkRailClient;
+  return networkRailClient
 }
 
-export default NetworkRailClient;
+export default NetworkRailClient

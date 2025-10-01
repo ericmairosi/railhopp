@@ -1,0 +1,88 @@
+# Docker ignore file for Railhopp deployment
+
+# Dependencies and build outputs (at all levels)
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+out/
+**/out/
+build/
+**/build/
+dist/
+**/dist/
+
+# Turbo cache (at all levels)
+.turbo/
+**/.turbo/
+
+# Logs and debug files
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+logs/
+*.log
+
+# Environment files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+LICENSE
+docs/
+*.md
+!DEPLOYMENT_READY.md
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Test files
+coverage/
+.coverage
+.nyc_output
+.jest/
+__tests__/
+
+# Temporary files
+tmp/
+temp/
+.cache/
+.parcel-cache/
+
+# Package manager files (keep what we need)
+.pnpm-store/
+.yarn/
+yarn.lock
+package-lock.json
+
+# Build tools
+tsconfig.tsbuildinfo
+.eslintcache
+
+# Other deployment files
+# Dockerfile - removed so our custom Dockerfile is included
+docker-compose.yml
+k8s/
+vercel.json
+netlify.toml

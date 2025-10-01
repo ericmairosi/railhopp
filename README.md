@@ -49,17 +49,20 @@ railhopp/
 ### Installation
 
 1. **Clone and install dependencies:**
+
    ```bash
    pnpm install
    ```
 
 2. **Set up environment variables:**
+
    ```bash
    cp .env.example .env.local
    # Edit .env.local with your API keys
    ```
 
 3. **Start development server:**
+
    ```bash
    pnpm dev
    ```
@@ -93,6 +96,7 @@ pnpm --filter web dev
 ## 📊 SEO Features
 
 ### Technical SEO
+
 - ✅ Server-side rendering (SSR) for all public pages
 - ✅ Dynamic meta tags and Open Graph
 - ✅ Structured data (JSON-LD) for stations, routes, and services
@@ -101,6 +105,7 @@ pnpm --filter web dev
 - ✅ Core Web Vitals optimization
 
 ### Performance
+
 - ✅ Image optimization with WebP/AVIF support
 - ✅ Automatic code splitting
 - ✅ Multi-layer caching strategy
@@ -108,6 +113,7 @@ pnpm --filter web dev
 - ✅ Critical CSS inlining
 
 ### Content Strategy
+
 - Station-specific landing pages (2,500+ UK stations)
 - Route guides and timetables
 - Real-time service updates
@@ -116,11 +122,13 @@ pnpm --filter web dev
 ## 🔌 API Integration
 
 ### Data Sources
+
 - **National Rail Darwin API**: Real-time departures/arrivals
 - **Network Rail Feeds**: Train movements, TSRs, VSTP changes
 - **Knowledgebase API**: Station and static data
 
 ### Real-time Updates
+
 - WebSocket connections for live data
 - Server-Sent Events for notifications
 - Optimistic UI updates
@@ -162,6 +170,7 @@ Multi-layer caching for optimal performance:
 ### Vercel Deployment (Recommended)
 
 1. **Connect to Vercel:**
+
    ```bash
    npx vercel
    ```
@@ -206,6 +215,7 @@ NEXT_PUBLIC_APP_URL=https://railhopp.com
 ## 🎯 Roadmap
 
 ### Phase 1: ✅ Foundation (Weeks 1-2)
+
 - [x] Project setup and monorepo structure
 - [x] Next.js app with TypeScript
 - [x] SEO-optimized homepage
@@ -213,24 +223,28 @@ NEXT_PUBLIC_APP_URL=https://railhopp.com
 - [x] Development tooling
 
 ### Phase 2: 🔄 Data Integration (Weeks 3-4)
+
 - [ ] Database schema design
 - [ ] National Rail API integration
 - [ ] Network Rail feed connections
 - [ ] Real-time data pipeline
 
 ### Phase 3: 🎯 Frontend Core (Weeks 5-6)
+
 - [ ] Station pages (2,500+ UK stations)
 - [ ] Journey planner interface
 - [ ] Live departure boards
 - [ ] Service disruption pages
 
 ### Phase 4: 🚀 Advanced Features (Weeks 7-8)
+
 - [ ] Interactive maps with live trains
 - [ ] User accounts and preferences
 - [ ] Push notifications
 - [ ] Offline functionality
 
 ### Phase 5: 🎨 Polish & Launch (Weeks 9-10)
+
 - [ ] Performance optimization
 - [ ] SEO final pass
 - [ ] Testing and QA

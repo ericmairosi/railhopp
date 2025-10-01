@@ -11,6 +11,7 @@
 ## Quick Setup (5 minutes)
 
 ### 1. Install Fly CLI
+
 ```bash
 # macOS
 brew install flyctl
@@ -23,6 +24,7 @@ curl -L https://fly.io/install.sh | sh
 ```
 
 ### 2. Deploy Your WebSocket Server
+
 ```bash
 # In your websocket-server directory
 cd /c/Users/ericm/Desktop/Rail\ app/Railhopp/websocket-server
@@ -38,6 +40,7 @@ fly launch --name railhopp-websocket
 ```
 
 ### 3. Configure for Production
+
 Fly will auto-generate a `fly.toml` file:
 
 ```toml
@@ -61,19 +64,22 @@ primary_region = "lhr"
 ```
 
 ### 4. Deploy
+
 ```bash
 fly deploy
 ```
 
 ### 5. Your Service Will Be Live At:
+
 ```
 https://railhopp-websocket.fly.dev
 wss://railhopp-websocket.fly.dev
 ```
 
 ## Cost Estimate
+
 - **256MB VM**: ~$2/month
-- **1GB VM**: ~$6/month  
+- **1GB VM**: ~$6/month
 - **Network**: $0.02/GB (very cheap)
 - **Total**: $2-5/month typically
 
@@ -84,7 +90,7 @@ wss://railhopp-websocket.fly.dev
 ✅ **Auto-scaling** - handles traffic spikes  
 ✅ **WebSocket optimized** - perfect for real-time data  
 ✅ **Great monitoring** - built-in metrics  
-✅ **Easy updates** - `fly deploy` anytime  
+✅ **Easy updates** - `fly deploy` anytime
 
 ## GitHub Actions Integration
 
@@ -95,7 +101,7 @@ deploy-websocket:
   steps:
     - name: Setup Fly.io CLI
       uses: superfly/flyctl-actions/setup-flyctl@master
-    
+
     - name: Deploy to Fly.io
       run: flyctl deploy --remote-only
       env:

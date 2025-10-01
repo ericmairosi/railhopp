@@ -16,7 +16,9 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholde
 
 // Validate the URL before creating client
 if (!isValidUrl(supabaseUrl)) {
-  console.warn('Invalid Supabase URL detected. Please update your .env.local file with a valid Supabase project URL.')
+  console.warn(
+    'Invalid Supabase URL detected. Please update your .env.local file with a valid Supabase project URL.'
+  )
 }
 
 // Create client with fallback to prevent crashes
@@ -27,13 +29,13 @@ export const supabase = createClient(
     auth: {
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: true
+      detectSessionInUrl: true,
     },
     realtime: {
       params: {
-        eventsPerSecond: 10
-      }
-    }
+        eventsPerSecond: 10,
+      },
+    },
   }
 )
 
@@ -41,15 +43,17 @@ export const supabase = createClient(
 export function isSupabaseConfigured(): boolean {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  
-  return !!(url && 
-    key && 
-    !url.includes('placeholder') && 
+
+  return !!(
+    url &&
+    key &&
+    !url.includes('placeholder') &&
     !url.includes('your_supabase') &&
     !key.includes('placeholder') &&
     !key.includes('your_supabase') &&
     isValidUrl(url) &&
-    key.length > 20)
+    key.length > 20
+  )
 }
 
 // Database Types

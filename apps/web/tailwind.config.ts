@@ -1,10 +1,10 @@
-import type { Config } from "tailwindcss";
+import type { Config } from 'tailwindcss'
 
 const config: Config = {
   content: [
-    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/components/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
     extend: {
@@ -84,7 +84,7 @@ const config: Config = {
             delayed: '#f59e0b',
             disrupted: '#ef4444',
             premium: '#8b5cf6',
-          }
+          },
         },
         // Modern neutrals
         slate: {
@@ -99,15 +99,15 @@ const config: Config = {
           800: '#1e293b',
           900: '#0f172a',
           950: '#020617',
-        }
+        },
       },
       fontFamily: {
-        'sans': ['var(--font-inter)', 'system-ui', 'sans-serif'],
-        'mono': ['var(--font-jetbrains-mono)', 'Monaco', 'Consolas', 'monospace'],
-        'display': ['var(--font-inter)', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-jetbrains-mono)', 'Monaco', 'Consolas', 'monospace'],
+        display: ['var(--font-inter)', 'system-ui', 'sans-serif'],
       },
       fontSize: {
-        'terminal': ['1.25rem', { lineHeight: '1.4', letterSpacing: '0.05em' }],
+        terminal: ['1.25rem', { lineHeight: '1.4', letterSpacing: '0.05em' }],
         'departure-board': ['1.125rem', { lineHeight: '1.3', letterSpacing: '0.1em' }],
       },
       spacing: {
@@ -117,12 +117,12 @@ const config: Config = {
         '128': '32rem',
       },
       boxShadow: {
-        'premium': '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        premium: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
         'premium-lg': '0 35px 70px -15px rgba(0, 0, 0, 0.3)',
-        'soft': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-        'elegant': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-        'floating': '0 10px 25px rgba(59, 130, 246, 0.15)',
-        'glow': '0 0 20px rgba(14, 165, 233, 0.25)',
+        soft: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+        elegant: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+        floating: '0 10px 25px rgba(59, 130, 246, 0.15)',
+        glow: '0 0 20px rgba(14, 165, 233, 0.25)',
         'inner-soft': 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)',
       },
       animation: {
@@ -143,22 +143,20 @@ const config: Config = {
         terminalFlicker: {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.8' },
-        }
+        },
       },
       borderRadius: {
-        'railway': '0.75rem',
+        railway: '0.75rem',
       },
       backdropBlur: {
-        'railway': '12px',
+        railway: '12px',
       },
       screens: {
-        'xs': '475px',
-      }
+        xs: '475px',
+      },
     },
   },
-  plugins: [
-    require('@tailwindcss/typography'),
-  ],
-};
+  plugins: [require('@tailwindcss/typography')],
+}
 
-export default config;
+export default config

@@ -1,4 +1,14 @@
-import { supabase, type Station, type TrainOperator, type Route, type Schedule, type Pricing, type Booking, type TrainAmenity, type ScheduleWithDetails } from '@/lib/supabase'
+import {
+  supabase,
+  type Station,
+  type TrainOperator,
+  type Route,
+  type Schedule,
+  type Pricing,
+  type Booking,
+  type TrainAmenity,
+  type ScheduleWithDetails,
+} from '@/lib/supabase'
 
 export interface SearchFilters {
   originStationCode: string
@@ -62,7 +72,8 @@ export async function searchTrains(filters: SearchFilters): Promise<TrainSearchR
   try {
     const { data, error } = await supabase
       .from('schedules')
-      .select(`
+      .select(
+        `
         id,
         train_number,
         departure_time,
@@ -113,7 +124,8 @@ export async function searchTrains(filters: SearchFilters): Promise<TrainSearchR
         live_status (
           capacity_utilization
         )
-      `)
+      `
+      )
       .eq('route.origin_station.code', filters.originStationCode)
       .eq('route.destination_station.code', filters.destinationStationCode)
       .eq('is_active', true)
@@ -140,38 +152,49 @@ export async function searchTrains(filters: SearchFilters): Promise<TrainSearchR
       from_station: item.route.origin_station,
       to_station: item.route.destination_station,
       pricing: {
-        standard: item.route.pricing?.find((p: any) => p.ticket_type === 'standard') ? {
-          price: item.route.pricing.find((p: any) => p.ticket_type === 'standard')?.base_price || 0,
-          availability: item.route.pricing.find((p: any) => p.ticket_type === 'standard')?.availability || 0
-        } : undefined,
-        first_class: item.route.pricing?.find((p: any) => p.ticket_type === 'first_class') ? {
-          price: item.route.pricing.find((p: any) => p.ticket_type === 'first_class')?.base_price || 0,
-          availability: item.route.pricing.find((p: any) => p.ticket_type === 'first_class')?.availability || 0
-        } : undefined
+        standard: item.route.pricing?.find((p: any) => p.ticket_type === 'standard')
+          ? {
+              price:
+                item.route.pricing.find((p: any) => p.ticket_type === 'standard')?.base_price || 0,
+              availability:
+                item.route.pricing.find((p: any) => p.ticket_type === 'standard')?.availability ||
+                0,
+            }
+          : undefined,
+        first_class: item.route.pricing?.find((p: any) => p.ticket_type === 'first_class')
+          ? {
+              price:
+                item.route.pricing.find((p: any) => p.ticket_type === 'first_class')?.base_price ||
+                0,
+              availability:
+                item.route.pricing.find((p: any) => p.ticket_type === 'first_class')
+                  ?.availability || 0,
+            }
+          : undefined,
       },
       amenities: item.route.route_amenities?.map((ra: any) => ra.amenity).filter(Boolean) || [],
       delay_minutes: item.delay_minutes,
       status: item.status,
       platform: item.platform,
       co2_savings_kg: item.route.co2_savings_kg,
-      capacity_utilization: item.live_status?.[0]?.capacity_utilization
+      capacity_utilization: item.live_status?.[0]?.capacity_utilization,
     }))
 
     // Apply client-side filters
     let filteredResults = results
 
     if (filters.maxPrice) {
-      filteredResults = filteredResults.filter(result => 
-        (result.pricing.standard?.price || 0) <= filters.maxPrice!
+      filteredResults = filteredResults.filter(
+        (result) => (result.pricing.standard?.price || 0) <= filters.maxPrice!
       )
     }
 
     if (filters.directOnly) {
-      filteredResults = filteredResults.filter(result => result.is_direct)
+      filteredResults = filteredResults.filter((result) => result.is_direct)
     }
 
     if (filters.operators?.length) {
-      filteredResults = filteredResults.filter(result =>
+      filteredResults = filteredResults.filter((result) =>
         filters.operators!.includes(result.operator.short_name)
       )
     }
@@ -257,14 +280,18 @@ export async function getTrainOperators(): Promise<TrainOperator[]> {
 /**
  * Get live departures for a specific station
  */
-export async function getLiveDepartures(stationCode: string, limit: number = 10): Promise<TrainSearchResult[]> {
+export async function getLiveDepartures(
+  stationCode: string,
+  limit: number = 10
+): Promise<TrainSearchResult[]> {
   try {
     const now = new Date()
     const currentTime = now.toTimeString().slice(0, 8) // HH:MM:SS format
 
     const { data, error } = await supabase
       .from('schedules')
-      .select(`
+      .select(
+        `
         id,
         train_number,
         departure_time,
@@ -303,7 +330,8 @@ export async function getLiveDepartures(stationCode: string, limit: number = 10)
           capacity_utilization,
           passenger_count
         )
-      `)
+      `
+      )
       .eq('route.origin_station.code', stationCode)
       .gte('departure_time', currentTime)
       .eq('is_active', true)
@@ -326,21 +354,32 @@ export async function getLiveDepartures(stationCode: string, limit: number = 10)
       from_station: item.route.origin_station,
       to_station: item.route.destination_station,
       pricing: {
-        standard: item.route.pricing?.find((p: any) => p.ticket_type === 'standard') ? {
-          price: item.route.pricing.find((p: any) => p.ticket_type === 'standard')?.base_price || 0,
-          availability: item.route.pricing.find((p: any) => p.ticket_type === 'standard')?.availability || 0
-        } : undefined,
-        first_class: item.route.pricing?.find((p: any) => p.ticket_type === 'first_class') ? {
-          price: item.route.pricing.find((p: any) => p.ticket_type === 'first_class')?.base_price || 0,
-          availability: item.route.pricing.find((p: any) => p.ticket_type === 'first_class')?.availability || 0
-        } : undefined
+        standard: item.route.pricing?.find((p: any) => p.ticket_type === 'standard')
+          ? {
+              price:
+                item.route.pricing.find((p: any) => p.ticket_type === 'standard')?.base_price || 0,
+              availability:
+                item.route.pricing.find((p: any) => p.ticket_type === 'standard')?.availability ||
+                0,
+            }
+          : undefined,
+        first_class: item.route.pricing?.find((p: any) => p.ticket_type === 'first_class')
+          ? {
+              price:
+                item.route.pricing.find((p: any) => p.ticket_type === 'first_class')?.base_price ||
+                0,
+              availability:
+                item.route.pricing.find((p: any) => p.ticket_type === 'first_class')
+                  ?.availability || 0,
+            }
+          : undefined,
       },
       amenities: [],
       delay_minutes: item.delay_minutes,
       status: item.status,
       platform: item.platform,
       co2_savings_kg: item.route.co2_savings_kg,
-      capacity_utilization: item.live_status?.[0]?.capacity_utilization
+      capacity_utilization: item.live_status?.[0]?.capacity_utilization,
     }))
   } catch (error) {
     console.error('Error in getLiveDepartures:', error)
@@ -368,11 +407,11 @@ export async function createBooking(bookingData: {
         ...bookingData,
         booking_reference: await generateBookingReference(),
         coach: 'A', // Default coach
-        base_price: bookingData.total_price - 5.50, // Subtract fees
-        booking_fee: 1.50,
-        seat_reservation_fee: 4.00,
+        base_price: bookingData.total_price - 5.5, // Subtract fees
+        booking_fee: 1.5,
+        seat_reservation_fee: 4.0,
         payment_status: 'pending',
-        booking_status: 'confirmed'
+        booking_status: 'confirmed',
       })
       .select()
       .single()
@@ -396,7 +435,8 @@ export async function getUserBookings(email: string): Promise<Booking[]> {
   try {
     const { data, error } = await supabase
       .from('bookings')
-      .select(`
+      .select(
+        `
         *,
         schedule:schedules (
           train_number,
@@ -420,7 +460,8 @@ export async function getUserBookings(email: string): Promise<Booking[]> {
             )
           )
         )
-      `)
+      `
+      )
       .eq('passenger_email', email)
       .order('created_at', { ascending: false })
 
@@ -451,10 +492,7 @@ async function generateBookingReference(): Promise<string> {
 /**
  * Subscribe to live updates for a specific station
  */
-export function subscribeToLiveUpdates(
-  stationCode: string,
-  callback: (payload: any) => void
-) {
+export function subscribeToLiveUpdates(stationCode: string, callback: (payload: any) => void) {
   return supabase
     .channel(`live-updates-${stationCode}`)
     .on(
@@ -462,7 +500,7 @@ export function subscribeToLiveUpdates(
       {
         event: '*',
         schema: 'public',
-        table: 'live_status'
+        table: 'live_status',
       },
       callback
     )
@@ -499,7 +537,7 @@ export async function getNetworkStats(): Promise<{
       .eq('is_active', true)
       .gt('delay_minutes', 0)
 
-    const averageDelay = delayData?.length 
+    const averageDelay = delayData?.length
       ? delayData.reduce((sum: any, item: any) => sum + item.delay_minutes, 0) / delayData.length
       : 0
 
@@ -513,7 +551,7 @@ export async function getNetworkStats(): Promise<{
       totalTrains: totalTrains || 0,
       onTimePercentage: totalTrains ? Math.round(((onTimeTrains || 0) / totalTrains) * 100) : 0,
       averageDelay: Math.round(averageDelay * 10) / 10, // Round to 1 decimal place
-      activeOperators: activeOperators || 0
+      activeOperators: activeOperators || 0,
     }
   } catch (error) {
     console.error('Error getting network stats:', error)
@@ -521,7 +559,7 @@ export async function getNetworkStats(): Promise<{
       totalTrains: 0,
       onTimePercentage: 0,
       averageDelay: 0,
-      activeOperators: 0
+      activeOperators: 0,
     }
   }
 }

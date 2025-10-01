@@ -49,11 +49,13 @@ git push origin production
 ### Step 2: Deploy to Vercel (Web Application)
 
 **2.1 Install Vercel CLI:**
+
 ```bash
 npm i -g vercel
 ```
 
 **2.2 Deploy to Vercel:**
+
 ```bash
 # In your project root
 vercel --prod
@@ -72,6 +74,7 @@ vercel --prod
 Go to [Vercel Dashboard](https://vercel.com/dashboard) → Your Project → Settings → Environment Variables
 
 Add these variables:
+
 ```bash
 # Database
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
@@ -95,10 +98,12 @@ NODE_ENV=production
 ### Step 3: Deploy WebSocket Server to Railway
 
 **3.1 Create Railway Account:**
+
 - Go to [Railway](https://railway.app)
 - Sign up with GitHub
 
 **3.2 Deploy WebSocket Server:**
+
 ```bash
 # Install Railway CLI
 npm install -g @railway/cli
@@ -117,6 +122,7 @@ railway up
 **3.3 Configure Environment Variables in Railway:**
 
 In Railway dashboard → Your Project → Variables:
+
 ```bash
 NETWORK_RAIL_USERNAME=ericmairosi@gmail.com
 NETWORK_RAIL_PASSWORD=Kirsty77!
@@ -125,17 +131,20 @@ PORT=3001
 ```
 
 **3.4 Get WebSocket URL:**
+
 - Copy the Railway deployment URL (e.g., `https://your-project.railway.app`)
 - Update Vercel environment variable `NEXT_PUBLIC_WEBSOCKET_URL`
 
 ### Step 4: Set Up Database (Supabase)
 
 **4.1 Create Supabase Project:**
+
 - Go to [Supabase](https://supabase.com)
 - Create new project
 - Choose region (Europe West - London for UK app)
 
 **4.2 Run Database Setup:**
+
 ```sql
 -- Run this in Supabase SQL Editor
 -- (Use the schema from supabase_schema_complete.sql)
@@ -173,20 +182,24 @@ CREATE TABLE user_preferences (
 ```
 
 **4.3 Get Database Credentials:**
+
 - Project Settings → API → Copy URL and keys
 - Add to both Vercel and Railway environment variables
 
 ### Step 5: Configure Custom Domain (Optional)
 
 **5.1 Vercel Domain:**
+
 - Vercel Dashboard → Domains → Add Domain
 - Configure DNS: Add CNAME record pointing to `cname.vercel-dns.com`
 
 **5.2 Railway Domain:**
+
 - Railway Dashboard → Settings → Domain
 - Add custom domain for WebSocket server
 
 **5.3 Update Environment Variables:**
+
 ```bash
 # Update in Vercel
 NEXT_PUBLIC_APP_URL=https://railhopp.com
@@ -204,6 +217,7 @@ url = 'wss://api.railhopp.com'
 Go to GitHub → Repository → Settings → Secrets → Actions
 
 Add these secrets:
+
 ```bash
 VERCEL_TOKEN=your_vercel_token
 VERCEL_ORG_ID=your_vercel_org_id
@@ -215,29 +229,34 @@ WEBSOCKET_URL=https://api.railhopp.com
 ```
 
 **6.2 Enable Auto-Deploy:**
+
 - Push to main/master branch triggers automatic deployment
 - Pull requests get preview deployments
 
 ## 🧪 Testing Production Deployment
 
 ### Test Web Application
+
 ```bash
 curl https://railhopp.com/api/health
 # Should return: {"status": "healthy", ...}
 ```
 
 ### Test WebSocket Server
+
 ```bash
 curl https://api.railhopp.com/health
 # Should return: {"status": "healthy", "clients": 0, ...}
 ```
 
 ### Test Real-time Updates
+
 1. Open: `https://railhopp.com/realtime-test.html`
 2. Click "Connect" - should show "Connected" status
 3. Click simulation buttons - should see live updates
 
 ### Test Darwin API
+
 ```bash
 curl https://railhopp.com/api/darwin/departures?crs=KGX
 # Should return real departure data (not mock)
@@ -248,6 +267,7 @@ curl https://railhopp.com/api/darwin/departures?crs=KGX
 ### Performance Settings
 
 **Vercel Function Timeout:**
+
 ```json
 // vercel.json
 {
@@ -260,6 +280,7 @@ curl https://railhopp.com/api/darwin/departures?crs=KGX
 ```
 
 **Railway Resource Allocation:**
+
 - Memory: 512MB minimum
 - CPU: 1 vCPU minimum
 - Enable auto-scaling
@@ -267,6 +288,7 @@ curl https://railhopp.com/api/darwin/departures?crs=KGX
 ### Monitoring Setup
 
 **1. Add Health Check Endpoints:**
+
 ```javascript
 // apps/web/src/app/api/health/route.ts
 export async function GET() {
@@ -276,13 +298,14 @@ export async function GET() {
     services: {
       darwin: 'operational',
       networkRail: 'operational',
-      database: 'connected'
-    }
-  });
+      database: 'connected',
+    },
+  })
 }
 ```
 
 **2. Set Up Uptime Monitoring:**
+
 - Use services like Uptime Robot, Pingdom, or StatusPage
 - Monitor both web app and WebSocket server
 - Set up alerts for downtime
@@ -290,32 +313,35 @@ export async function GET() {
 ### Security Configuration
 
 **Environment Variables:**
+
 - ✅ Never commit API keys to Git
 - ✅ Use strong passwords for Network Rail
 - ✅ Rotate secrets regularly
 - ✅ Enable 2FA on all services
 
 **CORS Configuration:**
+
 ```javascript
 // apps/web/next.config.ts
 const nextConfig = {
   async headers() {
     return [
       {
-        source: "/api/:path*",
+        source: '/api/:path*',
         headers: [
-          { key: "Access-Control-Allow-Origin", value: "https://railhopp.com" },
-          { key: "Access-Control-Allow-Methods", value: "GET, POST, OPTIONS" },
+          { key: 'Access-Control-Allow-Origin', value: 'https://railhopp.com' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET, POST, OPTIONS' },
         ],
       },
-    ];
+    ]
   },
-};
+}
 ```
 
 ## 📊 Production Checklist
 
 ### Pre-Launch
+
 - [ ] All environment variables configured
 - [ ] Database schema deployed
 - [ ] WebSocket server responding to health checks
@@ -326,6 +352,7 @@ const nextConfig = {
 - [ ] Custom domain configured (if applicable)
 
 ### Launch
+
 - [ ] Announce to users
 - [ ] Monitor error rates
 - [ ] Check API response times
@@ -334,6 +361,7 @@ const nextConfig = {
 - [ ] Check real-time data accuracy
 
 ### Post-Launch
+
 - [ ] Set up monitoring dashboards
 - [ ] Configure alerting
 - [ ] Plan capacity scaling
@@ -345,12 +373,14 @@ const nextConfig = {
 ### Common Issues
 
 **1. Darwin API returns 401:**
+
 ```bash
 # Check your Darwin API key
 curl -H "Authorization: Bearer YOUR_KEY" https://railhopp.com/api/darwin/departures?crs=KGX
 ```
 
 **2. WebSocket connection fails:**
+
 ```bash
 # Check WebSocket server health
 curl https://api.railhopp.com/health
@@ -360,11 +390,13 @@ curl https://api.railhopp.com/health
 ```
 
 **3. Network Rail not connecting:**
+
 - Verify credentials in Railway dashboard
 - Check server logs in Railway
 - Ensure STOMP port 61618 is accessible
 
 **4. Database connection issues:**
+
 - Verify Supabase URLs and keys
 - Check connection pooling limits
 - Review database logs
@@ -377,12 +409,13 @@ curl https://api.railhopp.com/health
    - Supabase: Logs & monitoring section
 
 2. **Test Endpoints:**
+
    ```bash
    # Health checks
    curl https://railhopp.com/api/health
    curl https://api.railhopp.com/health
-   
-   # API tests  
+
+   # API tests
    curl https://railhopp.com/api/darwin/departures?crs=KGX
    curl https://railhopp.com/api/websocket
    ```

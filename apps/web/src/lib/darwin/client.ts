@@ -1,557 +1,176 @@
 // Darwin API Client for UK Rail Real-time Information
-// Handles National Rail Darwin API calls with SOAP/REST interface
+// Uses Darwin Real Time Train Information with STOMP protocol
+// Darwin feeds use STOMP (Simple Text-Oriented Messaging Protocol) for real-time data
 
-import { 
+import {
   DarwinConfig,
   StationBoardRequest,
   LiveStationBoard,
-  LiveDeparture,
   TrainServiceDetails,
-  ServiceLocation,
-  CallingPointList,
-  CallingPoint,
-  DarwinAPIError
-} from './types';
-import { XMLParser } from 'fast-xml-parser';
+  DarwinAPIError,
+} from './types'
+import { getDarwinPubSubClient } from './pubsub-client'
+import DarwinSTOMPClient from './stomp-client'
+import DarwinSOAPClient from './soap-client'
 
 export class DarwinClient {
-  private config: DarwinConfig;
-  private baseHeaders: Record<string, string>;
-  private parser: XMLParser;
+  private pubSubClient = getDarwinPubSubClient()
+  private stompClient: DarwinSTOMPClient
+  private soapClient: DarwinSOAPClient
+  private soapEnabled: boolean
 
   constructor(config: DarwinConfig) {
-    this.config = {
-      timeout: 10000,
-      retries: 3,
-      ...config
-    };
-
-    this.baseHeaders = {
-      'Content-Type': 'text/xml; charset=utf-8',
-      'User-Agent': 'Railhopp-Darwin-Client/1.0',
-      'SOAPAction': ''
-    };
-    
-    // Initialize XML parser
-    this.parser = new XMLParser({
-      ignoreAttributes: false,
-      attributeNamePrefix: '@_',
-      isArray: (name, jpath) => {
-        // These elements should always be treated as arrays even when there's only one
-        const arrayElements = [
-          'destination', 'origin', 'service', 'callingPoint', 'previousCallingPoints',
-          'subsequentCallingPoints', 'message', 'platform'
-        ];
-        return arrayElements.includes(name);
-      }
-    });
+    // Initialize clients
+    this.soapClient = new DarwinSOAPClient(config)
+    this.stompClient = new DarwinSTOMPClient(config)
+    // Enable SOAP automatically if credentials are present, or explicit opt-in via env
+    this.soapEnabled =
+      process.env.DARWIN_SOAP_ENABLED === 'true' ||
+      Boolean(process.env.DARWIN_API_URL && process.env.DARWIN_API_TOKEN)
   }
 
   /**
-   * Check if Darwin API is enabled and configured
+   * Check if Darwin is enabled and configured (SOAP, STOMP, or Pub/Sub)
    */
   isEnabled(): boolean {
-    return Boolean(
-      this.config.token && 
-      this.config.apiUrl && 
-      this.config.token !== 'your_darwin_api_key'
-    );
+    return (
+      this.stompClient.isEnabled() ||
+      (this.soapEnabled && this.soapClient.isEnabled()) ||
+      this.pubSubClient.isEnabled()
+    )
   }
 
   /**
-   * Get departure board for a station
+   * Get departure board for a station (priority: Pub/Sub > STOMP > SOAP)
    */
   async getStationBoard(request: StationBoardRequest): Promise<LiveStationBoard> {
-    // Check if API is configured properly
-    if (!this.isEnabled()) {
-      console.log('Darwin API not configured, using mock data');
-      return this.getMockStationBoard(request);
+    let lastError: Error | null = null
+
+    // Prefer broker-based Pub/Sub first for reliability in your current setup
+    try {
+      console.log('Attempting Darwin Pub/Sub for station:', request.crs)
+      return await this.pubSubClient.getStationBoard(request)
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error))
+      console.warn('Darwin Pub/Sub failed for', request.crs, ':', lastError.message)
     }
 
-    try {
-      console.log(`Fetching real Darwin data for station: ${request.crs}`);
-      
-      const soapEnvelope = this.buildStationBoardSOAP(request);
-      const response = await this.makeSOAPRequest(soapEnvelope);
-      const stationBoard = this.parseStationBoardResponse(response);
-      
-      console.log(`Successfully fetched real Darwin data for ${request.crs}: ${stationBoard.departures.length} services`);
-      return stationBoard;
-    } catch (error) {
-      console.warn(`Darwin API failed for station ${request.crs}, falling back to mock data:`, error);
-      
-      // If we have a specific API error, we might want to throw it in some cases
-      if (error instanceof DarwinAPIError && error.code === 'NO_DATA') {
-        // For "No data" errors, return empty station board instead of mock data
-        return {
-          locationName: this.getStationName(request.crs),
-          crs: request.crs,
-          stationName: this.getStationName(request.crs),
-          stationCode: request.crs,
-          departures: [],
-          generatedAt: new Date().toISOString(),
-          messages: [{
-            severity: 'info',
-            message: 'No departure information available for this station at the moment.',
-            category: 'NO_DATA'
-          }]
-        };
+    // Try STOMP next (real-time if network allows 61617)
+    if (this.stompClient.isEnabled()) {
+      try {
+        console.log('Attempting Darwin STOMP for station:', request.crs)
+        return await this.stompClient.getStationBoard(request)
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error))
+        console.warn('Darwin STOMP failed for', request.crs, ':', lastError.message)
       }
-      
-      // For other errors, return mock data as fallback
-      const mockData = this.getMockStationBoard(request);
-      
-      // Add a message indicating we're using mock data
-      mockData.messages = mockData.messages || [];
-      mockData.messages.push({
-        severity: 'warning',
-        message: 'Live departure data temporarily unavailable - showing sample data',
-        category: 'MOCK_DATA'
-      });
-      
-      return mockData;
     }
+
+    // Finally try SOAP if explicitly enabled and configured
+    if (this.soapEnabled && this.soapClient.isEnabled()) {
+      try {
+        console.log('Attempting Darwin SOAP API for station:', request.crs)
+        const result = await this.soapClient.getStationBoard(request)
+        console.log('Darwin SOAP API successful for:', request.crs)
+        return result
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error))
+        console.warn('Darwin SOAP API failed for', request.crs, ':', lastError.message)
+      }
+    }
+
+    // All real APIs failed - provide informative error with API status
+    console.log('All Darwin APIs failed, APIs not properly configured or accessible')
+    throw new DarwinAPIError(
+      'All Darwin APIs failed - real-time data unavailable',
+      'ALL_APIS_FAILED',
+      {
+        lastError: lastError?.message || 'Unknown error',
+        soapEnabled: this.soapEnabled && this.soapClient.isEnabled(),
+        stompEnabled: this.stompClient.isEnabled(),
+        pubSubEnabled: this.pubSubClient.isEnabled(),
+        suggestion: 'Check API credentials, broker status, or STOMP port access (61617)',
+      }
+    )
   }
 
   /**
-   * Get detailed service information
+   * Get detailed service information (priority: STOMP > SOAP (if enabled) > Pub/Sub)
    */
   async getServiceDetails(serviceId: string): Promise<TrainServiceDetails | null> {
-    if (!this.isEnabled()) {
-      // Return mock data for development
-      return this.getMockServiceDetails(serviceId);
+    if (this.stompClient.isEnabled()) {
+      try {
+        return await this.stompClient.getServiceDetails(serviceId)
+      } catch {}
     }
 
-    try {
-      const soapEnvelope = this.buildServiceDetailsSOAP(serviceId);
-      const response = await this.makeSOAPRequest(soapEnvelope);
-      return this.parseServiceDetailsResponse(response);
-    } catch (error) {
-      console.warn('Darwin service details failed, using mock data:', error);
-      return this.getMockServiceDetails(serviceId);
+    if (this.soapEnabled && this.soapClient.isEnabled()) {
+      try {
+        return await this.soapClient.getServiceDetails(serviceId)
+      } catch {}
     }
+
+    // Fallback to Pub/Sub client (requires backend JMS service)
+    return this.pubSubClient.getServiceDetails(serviceId)
   }
 
   /**
-   * Test connection to Darwin API
+   * Test connection to Darwin system (priority: STOMP > SOAP (if enabled) > Pub/Sub)
    */
   async testConnection(): Promise<boolean> {
-    if (!this.isEnabled()) {
-      console.log('Darwin API not configured, using mock mode');
-      return true; // Mock mode always works
+    if (this.stompClient.isEnabled()) {
+      try {
+        return true === (await this.stompClient.testConnection())
+      } catch {}
     }
 
-    try {
-      // Try a simple station board request
-      await this.getStationBoard({ crs: 'KGX', numRows: 1 });
-      return true;
-    } catch (error) {
-      console.error('Darwin connection test failed:', error);
-      return false;
+    if (this.soapEnabled && this.soapClient.isEnabled()) {
+      try {
+        return await this.soapClient.testConnection()
+      } catch {}
     }
-  }
 
-  /**
-   * Make SOAP request to Darwin API
-   */
-  private async makeSOAPRequest(soapEnvelope: string): Promise<string> {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.config.timeout || 10000);
-      
-      const response = await fetch(this.config.apiUrl, {
-        method: 'POST',
-        headers: this.baseHeaders,
-        body: soapEnvelope,
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Darwin API HTTP Error:', {
-          status: response.status,
-          statusText: response.statusText,
-          body: errorText
-        });
-        
-        throw new DarwinAPIError(
-          `HTTP ${response.status}: ${response.statusText}`,
-          'HTTP_ERROR',
-          { status: response.status, body: errorText }
-        );
-      }
-
-      const responseText = await response.text();
-      
-      // Check for SOAP faults
-      if (responseText.includes('<soap:Fault>') || responseText.includes('faultstring')) {
-        console.error('Darwin API SOAP Fault:', responseText);
-        throw new DarwinAPIError(
-          'SOAP fault in Darwin API response',
-          'SOAP_FAULT',
-          { response: responseText }
-        );
-      }
-      
-      return responseText;
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        throw new DarwinAPIError(
-          `Request timeout after ${this.config.timeout}ms`,
-          'TIMEOUT',
-          { timeout: this.config.timeout }
-        );
-      }
-      
-      if (error instanceof DarwinAPIError) {
-        throw error;
-      }
-      
-      throw new DarwinAPIError(
-        `Network error: ${error.message}`,
-        'NETWORK_ERROR',
-        { originalError: error }
-      );
-    }
-  }
-
-  /**
-   * Build SOAP envelope for station board request
-   */
-  private buildStationBoardSOAP(request: StationBoardRequest): string {
-    return `<?xml version="1.0" encoding="utf-8"?>
-      <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" 
-                     xmlns:ldb="http://thalesgroup.com/RTTI/2017-10-01/ldb/">
-        <soap:Header>
-          <ldb:AccessToken>
-            <ldb:TokenValue>${this.config.token}</ldb:TokenValue>
-          </ldb:AccessToken>
-        </soap:Header>
-        <soap:Body>
-          <ldb:GetDepBoardRequest>
-            <ldb:numRows>${request.numRows || 10}</ldb:numRows>
-            <ldb:crs>${request.crs}</ldb:crs>
-            ${request.filterCrs ? `<ldb:filterCrs>${request.filterCrs}</ldb:filterCrs>` : ''}
-            ${request.filterType ? `<ldb:filterType>${request.filterType}</ldb:filterType>` : ''}
-            ${request.timeOffset ? `<ldb:timeOffset>${request.timeOffset}</ldb:timeOffset>` : ''}
-            ${request.timeWindow ? `<ldb:timeWindow>${request.timeWindow}</ldb:timeWindow>` : ''}
-          </ldb:GetDepBoardRequest>
-        </soap:Body>
-      </soap:Envelope>`;
-  }
-
-  /**
-   * Build SOAP envelope for service details request
-   */
-  private buildServiceDetailsSOAP(serviceId: string): string {
-    return `<?xml version="1.0" encoding="utf-8"?>
-      <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" 
-                     xmlns:ldb="http://thalesgroup.com/RTTI/2017-10-01/ldb/">
-        <soap:Header>
-          <ldb:AccessToken>
-            <ldb:TokenValue>${this.config.token}</ldb:TokenValue>
-          </ldb:AccessToken>
-        </soap:Header>
-        <soap:Body>
-          <ldb:GetServiceDetailsRequest>
-            <ldb:serviceID>${serviceId}</ldb:serviceID>
-          </ldb:GetServiceDetailsRequest>
-        </soap:Body>
-      </soap:Envelope>`;
-  }
-
-  /**
-   * Parse SOAP response for station board
-   */
-  private parseStationBoardResponse(response: string): LiveStationBoard {
-    try {
-      // Parse XML response
-      const parsed = this.parser.parse(response);
-      
-      // Extract the relevant parts from SOAP response
-      const envelope = parsed['soap:Envelope'];
-      const body = envelope['soap:Body'];
-      const getDepBoardResponse = body['GetDepBoardWithDetailsResponse'] || body['GetDepartureBoardResponse'];
-      
-      if (!getDepBoardResponse) {
-        throw new DarwinAPIError('Invalid SOAP response format', 'PARSING_ERROR', { response });
-      }
-      
-      // Get station board data
-      const stationBoard = getDepBoardResponse['GetStationBoardResult'];
-      
-      if (!stationBoard) {
-        throw new DarwinAPIError('No station board data in response', 'NO_DATA', { response });
-      }
-      
-      // Extract train services
-      const trainServices = stationBoard.trainServices?.service || [];
-      const nrccMessages = stationBoard.nrccMessages?.message || [];
-
-      // Map to our LiveDeparture format
-      const departures: LiveDeparture[] = trainServices.map((service: any) => {
-        return {
-          serviceID: service.serviceID || '',
-          rsid: service.rsid || undefined,
-          std: service.std || '',
-          etd: service.etd || '',
-          operator: service.operator || '',
-          operatorCode: service.operatorCode || '',
-          destination: service.destination?.[0]?.location?.[0]?.locationName || 'Unknown',
-          destinationCRS: service.destination?.[0]?.location?.[0]?.crs || '',
-          origin: service.origin?.[0]?.location?.[0]?.locationName || undefined,
-          originCRS: service.origin?.[0]?.location?.[0]?.crs || undefined,
-          platform: service.platform || undefined,
-          serviceType: service.serviceType || 'train',
-          length: service.length ? parseInt(service.length) : undefined,
-          cancelled: service.isCancelled === 'true' || service.etd === 'Cancelled',
-          cancelReason: service.cancelReason || undefined,
-          delayReason: service.delayReason || undefined,
-          isReverseFormation: service.isReverseFormation === 'true',
-          detachFront: service.detachFront === 'true',
-          formation: service.formation || undefined
-        };
-      });
-      
-      // Create the final station board object
-      return {
-        locationName: stationBoard.locationName || '',
-        crs: stationBoard.crs || '',
-        stationName: stationBoard.locationName || '',
-        stationCode: stationBoard.crs || '',
-        generatedAt: stationBoard.generatedAt || new Date().toISOString(),
-        departures,
-        messages: nrccMessages.map((msg: any) => ({
-          severity: msg['@_severity'] || 'info',
-          message: msg._, // The text content of the message
-          category: 'STATION_MESSAGE'
-        }))
-      };
-    } catch (error) {
-      console.error('Error parsing station board response:', error);
-      throw error instanceof DarwinAPIError ? error : 
-        new DarwinAPIError('Failed to parse SOAP response', 'PARSING_ERROR', { error });
-    }
-  }
-
-  /**
-   * Parse SOAP response for service details
-   */
-  private parseServiceDetailsResponse(response: string): TrainServiceDetails {
-    try {
-      // Parse XML response
-      const parsed = this.parser.parse(response);
-      
-      // Extract the relevant parts from SOAP response
-      const envelope = parsed['soap:Envelope'];
-      const body = envelope['soap:Body'];
-      const getServiceDetailsResponse = body['GetServiceDetailsResponse'];
-      
-      if (!getServiceDetailsResponse) {
-        throw new DarwinAPIError('Invalid service details response format', 'PARSING_ERROR', { response });
-      }
-      
-      // Get service details
-      const serviceDetails = getServiceDetailsResponse['GetServiceDetailsResult'];
-      
-      if (!serviceDetails) {
-        throw new DarwinAPIError('No service details in response', 'NO_DATA', { response });
-      }
-
-      // Parse origins and destinations
-      const origins: ServiceLocation[] = serviceDetails.origin?.location?.map((loc: any) => ({
-        locationName: loc.locationName || '',
-        crs: loc.crs || '',
-        via: loc.via || undefined
-      })) || [];
-      
-      const destinations: ServiceLocation[] = serviceDetails.destination?.location?.map((loc: any) => ({
-        locationName: loc.locationName || '',
-        crs: loc.crs || '',
-        via: loc.via || undefined
-      })) || [];
-      
-      // Parse calling points
-      const previousCallingPoints: CallingPointList[] = this.parseCallingPointLists(
-        serviceDetails.previousCallingPoints
-      );
-      
-      const subsequentCallingPoints: CallingPointList[] = this.parseCallingPointLists(
-        serviceDetails.subsequentCallingPoints
-      );
-
-      // Create the train service details object
-      return {
-        serviceID: serviceDetails.serviceID || '',
-        rsid: serviceDetails.rsid || undefined,
-        operator: serviceDetails.operator || '',
-        operatorCode: serviceDetails.operatorCode || '',
-        runDate: serviceDetails.runDate || new Date().toISOString(),
-        trainid: serviceDetails.trainid || undefined,
-        platform: serviceDetails.platform || undefined,
-        delayReason: serviceDetails.delayReason || undefined,
-        cancelReason: serviceDetails.cancelReason || undefined,
-        length: serviceDetails.length ? parseInt(serviceDetails.length) : undefined,
-        origin: origins,
-        destination: destinations,
-        previousCallingPoints: previousCallingPoints,
-        subsequentCallingPoints: subsequentCallingPoints
-      };
-    } catch (error) {
-      console.error('Error parsing service details response:', error);
-      throw error instanceof DarwinAPIError ? error : 
-        new DarwinAPIError('Failed to parse service details', 'PARSING_ERROR', { error });
-    }
-  }
-
-  /**
-   * Parse calling point lists
-   */
-  private parseCallingPointLists(callingPointsData: any): CallingPointList[] {
-    if (!callingPointsData || !callingPointsData.callingPointList) {
-      return [];
-    }
-    
-    // Ensure we handle both single and multiple calling point lists
-    const callingPointLists = Array.isArray(callingPointsData.callingPointList)
-      ? callingPointsData.callingPointList
-      : [callingPointsData.callingPointList];
-    
-    return callingPointLists.map((list: any) => {
-      // Parse the calling points
-      const points: CallingPoint[] = list.callingPoint?.map((point: any) => ({
-        locationName: point.locationName || '',
-        crs: point.crs || '',
-        st: point.st || undefined,
-        et: point.et || undefined,
-        at: point.at || undefined,
-        isCancelled: point.isCancelled === 'true',
-        length: point.length ? parseInt(point.length) : undefined,
-        detachFront: point.detachFront === 'true',
-        formation: point.formation || undefined,
-        adhocAlerts: point.adhocAlerts || undefined
-      })) || [];
-      
-      return {
-        serviceType: list.serviceType || undefined,
-        serviceChangeRequired: list.serviceChangeRequired === 'true',
-        assocIsCancelled: list.assocIsCancelled === 'true',
-        callingPoint: points
-      };
-    });
-  }
-
-  /**
-   * Get mock station board data for development
-   */
-  private getMockStationBoard(request: StationBoardRequest): LiveStationBoard {
-    const mockDepartures = [
-      {
-        serviceID: "mock-1",
-        operator: "Great Western Railway",
-        operatorCode: "GW",
-        destination: "Reading",
-        destinationCRS: "RDG",
-        std: "10:15",
-        etd: "On time",
-        platform: "1",
-        serviceType: "train",
-        cancelled: false
-      },
-      {
-        serviceID: "mock-2", 
-        operator: "CrossCountry",
-        operatorCode: "XC",
-        destination: "Birmingham New Street",
-        destinationCRS: "BHM",
-        std: "10:30",
-        etd: "10:33",
-        platform: "2",
-        serviceType: "train",
-        cancelled: false
-      },
-      {
-        serviceID: "mock-3",
-        operator: "Virgin Trains",
-        operatorCode: "VT",
-        destination: "Manchester Piccadilly",
-        destinationCRS: "MAN",
-        std: "10:45",
-        etd: "Cancelled",
-        platform: null,
-        serviceType: "train",
-        cancelled: true,
-        cancelReason: "Train fault"
-      }
-    ];
-
-    return {
-      locationName: this.getStationName(request.crs),
-      crs: request.crs,
-      stationName: this.getStationName(request.crs),
-      stationCode: request.crs,
-      departures: mockDepartures.slice(0, request.numRows || 10),
-      generatedAt: new Date().toISOString()
-    };
-  }
-
-  /**
-   * Get mock service details for development
-   */
-  private getMockServiceDetails(serviceId: string): TrainServiceDetails {
-    return {
-      serviceID: serviceId,
-      operator: "Great Western Railway",
-      operatorCode: "GW", 
-      runDate: new Date().toISOString(),
-      platform: "1",
-      origin: [{
-        locationName: "London Paddington",
-        crs: "PAD"
-      }],
-      destination: [{
-        locationName: "Reading",
-        crs: "RDG"
-      }]
-    };
-  }
-
-  /**
-   * Get station name from CRS code (basic mapping)
-   */
-  private getStationName(crs: string): string {
-    const stationMap: Record<string, string> = {
-      'KGX': 'London Kings Cross',
-      'PAD': 'London Paddington', 
-      'LIV': 'Liverpool Street',
-      'VIC': 'London Victoria',
-      'WAT': 'London Waterloo',
-      'BHM': 'Birmingham New Street',
-      'MAN': 'Manchester Piccadilly',
-      'RDG': 'Reading',
-      'BTN': 'Brighton'
-    };
-    
-    return stationMap[crs.toUpperCase()] || `${crs} Station`;
+    // Fallback to Pub/Sub client (requires backend JMS service)
+    return this.pubSubClient.testConnection()
   }
 }
 
 // Singleton instance for the application
-let darwinClient: DarwinClient | null = null;
+let darwinClient: DarwinClient | null = null
 
 export function getDarwinClient(): DarwinClient {
   if (!darwinClient) {
-    const config: DarwinConfig = {
-      apiUrl: process.env.DARWIN_API_URL || 'https://lite.realtime.nationalrail.co.uk/OpenLDBWS/ldb12.asmx',
-      token: process.env.DARWIN_API_KEY || process.env.DARWIN_API_TOKEN || ''
-    };
+    // Prefer explicit STOMP enablement; do NOT infer from SOAP token.
+    const pushToken = process.env.DARWIN_PASSWORD || process.env.DARWIN_PUSH_PORT_TOKEN || ''
+    const inferredUsername =
+      process.env.DARWIN_USERNAME || (pushToken ? 'darwin' : 'your_darwin_username')
+    const inferredPassword =
+      process.env.DARWIN_PASSWORD || process.env.DARWIN_PUSH_PORT_TOKEN || 'your_darwin_password'
 
-    darwinClient = new DarwinClient(config);
+    const config: DarwinConfig = {
+      // STOMP configuration (Darwin uses STOMP protocol)
+      stompUrl:
+        process.env.DARWIN_STOMP_URL ||
+        process.env.DARWIN_QUEUE_URL ||
+        'ssl://datafeeds.nationalrail.co.uk:61617',
+      username: inferredUsername,
+      password: inferredPassword,
+
+      // Queue configuration for Darwin STOMP / PubSub
+      queueUrl: process.env.DARWIN_QUEUE_URL || 'ssl://datafeeds.nationalrail.co.uk:61617',
+      queueName: process.env.DARWIN_QUEUE_NAME || 'Consumer.railhopp.VirtualTopic.PushPort-v18',
+      clientId: process.env.DARWIN_CLIENT_ID || 'railhopp_client',
+      enabled: process.env.DARWIN_ENABLED === 'true',
+
+      // Connection settings
+      timeout: 30000,
+      retries: 3,
+    }
+
+    darwinClient = new DarwinClient(config)
   }
 
-  return darwinClient;
+  return darwinClient
 }
 
-export default DarwinClient;
+export default DarwinClient

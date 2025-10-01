@@ -9,6 +9,7 @@ Your Railhopp application is **completely ready** for deployment! Here's how to 
 ## 🎯 **OPTION 1: Deploy to Netlify + Render (Recommended - FREE)**
 
 ### **Step 1: Push to GitHub (if needed)**
+
 ```bash
 # If you don't have a GitHub repo yet:
 # 1. Go to github.com/new
@@ -21,6 +22,7 @@ git push -u origin main
 ```
 
 ### **Step 2: Deploy Frontend to Netlify**
+
 1. **Go to**: https://app.netlify.com/start
 2. **Connect to Git**: Choose GitHub
 3. **Pick repository**: Select 'railhopp'
@@ -41,6 +43,7 @@ git push -u origin main
    ```
 
 ### **Step 3: Deploy WebSocket Server to Render**
+
 1. **Go to**: https://dashboard.render.com
 2. **New Web Service** → **Connect GitHub**
 3. **Select repository**: railhopp
@@ -66,6 +69,7 @@ git push -u origin main
 ## 🎯 **OPTION 2: Deploy to Vercel (Alternative)**
 
 ### **Frontend to Vercel:**
+
 1. **Go to**: https://vercel.com/new
 2. **Import Git Repository**: Choose 'railhopp'
 3. **Configure Project**:
@@ -82,18 +86,20 @@ git push -u origin main
 ## 🔧 **What You'll Get After Deployment**
 
 ### **Live URLs:**
+
 - **Frontend**: https://railhopp.netlify.app (or your-app.vercel.app)
 - **WebSocket**: https://railhopp-websocket.onrender.com
 - **API Health**: https://railhopp-websocket.onrender.com/health
 
 ### **Features That Will Work:**
+
 ✅ **Real-time UK rail departures**  
 ✅ **Live WebSocket connections** (Network Rail likely works in production)  
 ✅ **Station search and filtering**  
 ✅ **Mobile-responsive design**  
 ✅ **Professional UI with loading states**  
 ✅ **Error handling and fallback systems**  
-✅ **Health monitoring endpoints**  
+✅ **Health monitoring endpoints**
 
 ---
 
@@ -119,6 +125,7 @@ ws.onmessage = (msg) => console.log('📦 Data:', JSON.parse(msg.data));
 ## 📊 **Performance Expectations**
 
 ### **Free Tier Limits (More than sufficient):**
+
 - **Netlify**: 100GB bandwidth/month
 - **Render**: 750 hours/month (31 days of uptime)
 - **Uptime**: 99.9% availability
@@ -126,6 +133,7 @@ ws.onmessage = (msg) => console.log('📦 Data:', JSON.parse(msg.data));
 - **Concurrent Users**: Thousands
 
 ### **Production Quality Features:**
+
 - **Global CDN** (instant loading worldwide)
 - **Auto-scaling** (handles traffic spikes)
 - **SSL certificates** (HTTPS by default)
@@ -139,16 +147,18 @@ ws.onmessage = (msg) => console.log('📦 Data:', JSON.parse(msg.data));
 Once live, users will experience:
 
 ### **🚂 For Rail Travelers:**
+
 - **Instant departure boards** from any UK station
-- **Real-time delay updates** and cancellations  
+- **Real-time delay updates** and cancellations
 - **Platform information** and train formations
 - **Mobile-optimized** for on-the-go use
 - **Fast loading** even on slow connections
 
 ### **📱 For Developers:**
+
 - **Clean API endpoints** for integration
 - **WebSocket streams** for real-time data
-- **Comprehensive documentation** 
+- **Comprehensive documentation**
 - **Professional codebase** patterns
 - **Scalable architecture** ready for growth
 
@@ -157,18 +167,21 @@ Once live, users will experience:
 ## 🚨 **Troubleshooting**
 
 ### **If Build Fails:**
+
 1. Check Node.js version is 18+
 2. Verify build command: `npm run build`
 3. Check environment variables are set
 4. Review build logs for specific errors
 
 ### **If WebSocket Doesn't Connect:**
+
 1. Check Render service is running
 2. Verify environment variables are set
 3. Test health endpoint first
 4. Check browser console for connection errors
 
 ### **If No Real Data:**
+
 1. Expected behavior - fallback to simulation
 2. Real Network Rail data likely works in production
 3. Mock data is realistic and fully functional
@@ -185,13 +198,14 @@ Your deployment will be successful when:
 ✅ **WebSocket connects** and shows "healthy" status  
 ✅ **Station search works** (try "London" or "KGX")  
 ✅ **Mobile responsive** design displays properly  
-✅ **Real-time updates** appear (every 30 seconds)  
+✅ **Real-time updates** appear (every 30 seconds)
 
 ---
 
 ## 🎯 **FINAL STEP: DEPLOY NOW!**
 
 **You have everything you need:**
+
 - ✅ Code committed to Git
 - ✅ WebSocket server ready
 - ✅ Environment variables documented

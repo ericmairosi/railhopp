@@ -1,71 +1,73 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { Train, Menu, X, Home, Search, Clock, Star } from 'lucide-react';
+import { useState } from 'react'
+import { Train, Menu, X, Home, Search, Clock, Star, Activity } from 'lucide-react'
 
 interface NavigationProps {
-  currentPage?: 'home' | 'journey' | 'departures' | 'service' | 'other';
+  currentPage?: 'home' | 'journey' | 'departures' | 'service' | 'dashboard' | 'other'
 }
 
 export default function Navigation({ currentPage = 'other' }: NavigationProps) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const navItems = [
     { id: 'home', label: 'Home', href: '/modern', icon: Home },
+    { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: Activity },
     { id: 'journey', label: 'Journey Planner', href: '/journey', icon: Search },
     { id: 'departures', label: 'Live Departures', href: '/departures', icon: Clock },
-  ];
+  ]
 
   const toggleMobileMenu = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
-  };
+    setMobileMenuOpen(!mobileMenuOpen)
+  }
 
   return (
-    <header className="bg-white/95 backdrop-blur-xl border-b border-white/20 shadow-soft sticky top-0 z-50 w-full">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <header className="shadow-soft sticky top-0 z-50 w-full border-b border-white/20 bg-white/95 backdrop-blur-xl">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <a href="/modern" className="flex items-center gap-3 text-decoration-none hover:opacity-80 transition-opacity">
-            <div className="w-10 h-10 bg-gradient-to-r from-primary-500 to-railway-navy-600 rounded-xl flex items-center justify-center shadow-glow">
+          <a
+            href="/modern"
+            className="text-decoration-none flex items-center gap-3 transition-opacity hover:opacity-80"
+          >
+            <div className="from-primary-500 to-railway-navy-600 shadow-glow flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-r">
               <Train size={24} className="text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-black leading-tight">
-                RAILHOPP
-              </h1>
+              <h1 className="text-xl font-bold leading-tight text-black">RAILHOPP</h1>
               <div>
-                <span className="text-xs text-gray-700 font-medium">Premium Rail Experience</span>
+                <span className="text-xs font-medium text-gray-700">Premium Rail Experience</span>
               </div>
             </div>
           </a>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-2">
-            {navItems.map(item => {
-              const Icon = item.icon;
-              const isActive = currentPage === item.id;
-              
+          <nav className="hidden items-center gap-2 md:flex">
+            {navItems.map((item) => {
+              const Icon = item.icon
+              const isActive = currentPage === item.id
+
               return (
-                <a 
+                <a
                   key={item.id}
-                  href={item.href} 
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:scale-[1.02] ${
-                    isActive 
-                      ? 'bg-blue-600 text-white shadow-lg' 
-                      : 'bg-blue-100 text-blue-800 hover:text-blue-700 hover:bg-blue-200'
+                  href={item.href}
+                  className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all duration-200 hover:scale-[1.02] ${
+                    isActive
+                      ? 'bg-blue-600 text-white shadow-lg'
+                      : 'bg-blue-100 text-blue-800 hover:bg-blue-200 hover:text-blue-700'
                   }`}
                 >
                   <Icon size={16} />
                   {item.label}
                 </a>
-              );
+              )
             })}
           </nav>
 
           {/* Mobile Menu Button */}
           <button
             onClick={toggleMobileMenu}
-            className="md:hidden flex items-center justify-center p-2 rounded-lg bg-secondary-100 hover:bg-secondary-200 text-secondary-700 transition-colors"
+            className="bg-secondary-100 hover:bg-secondary-200 text-secondary-700 flex items-center justify-center rounded-lg p-2 transition-colors md:hidden"
           >
             {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -73,34 +75,32 @@ export default function Navigation({ currentPage = 'other' }: NavigationProps) {
 
         {/* Mobile Navigation Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-white/95 backdrop-blur-xl rounded-2xl mt-4 p-4 shadow-premium border border-white/40">
+          <div className="shadow-premium mt-4 rounded-2xl border border-white/40 bg-white/95 p-4 backdrop-blur-xl md:hidden">
             <nav className="grid gap-2">
-              {navItems.map(item => {
-                const Icon = item.icon;
-                const isActive = currentPage === item.id;
-                
+              {navItems.map((item) => {
+                const Icon = item.icon
+                const isActive = currentPage === item.id
+
                 return (
-                  <a 
+                  <a
                     key={item.id}
-                    href={item.href} 
+                    href={item.href}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 p-3 rounded-xl text-sm font-medium transition-all ${
-                      isActive 
-                        ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-floating' 
-                        : 'bg-blue-100 text-blue-800 hover:text-blue-700 hover:bg-blue-200'
+                    className={`flex items-center gap-3 rounded-xl p-3 text-sm font-medium transition-all ${
+                      isActive
+                        ? 'from-primary-500 to-primary-600 shadow-floating bg-gradient-to-r text-white'
+                        : 'bg-blue-100 text-blue-800 hover:bg-blue-200 hover:text-blue-700'
                     }`}
                   >
                     <Icon size={18} />
                     {item.label}
                   </a>
-                );
+                )
               })}
             </nav>
           </div>
         )}
       </div>
-
-
     </header>
-  );
+  )
 }

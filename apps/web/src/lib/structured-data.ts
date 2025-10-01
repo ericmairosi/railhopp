@@ -89,10 +89,7 @@ export function generateOrganizationStructuredData() {
     url: process.env.NEXT_PUBLIC_APP_URL,
     logo: `${process.env.NEXT_PUBLIC_APP_URL}/logo.png`,
     description: 'Real-time UK train information and journey planning platform',
-    sameAs: [
-      'https://twitter.com/railhopp',
-      'https://github.com/railhopp',
-    ],
+    sameAs: ['https://twitter.com/railhopp', 'https://github.com/railhopp'],
     contactPoint: {
       '@type': 'ContactPoint',
       contactType: 'customer service',

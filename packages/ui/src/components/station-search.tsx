@@ -17,12 +17,12 @@ interface StationSearchProps {
   stations: Station[]
 }
 
-export function StationSearch({ 
-  onStationSelect, 
-  placeholder = "Search stations...", 
+export function StationSearch({
+  onStationSelect,
+  placeholder = 'Search stations...',
   className,
   showNearby = true,
-  stations 
+  stations,
 }: StationSearchProps) {
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
@@ -38,12 +38,13 @@ export function StationSearch({
     }
 
     const filtered = stations
-      .filter(station => 
-        station.name.toLowerCase().includes(query.toLowerCase()) ||
-        station.code.toLowerCase().includes(query.toLowerCase())
+      .filter(
+        (station) =>
+          station.name.toLowerCase().includes(query.toLowerCase()) ||
+          station.code.toLowerCase().includes(query.toLowerCase())
       )
       .slice(0, 10)
-    
+
     setFilteredStations(filtered)
     setSelectedIndex(-1)
   }, [query, stations])
@@ -54,15 +55,11 @@ export function StationSearch({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault()
-        setSelectedIndex(prev => 
-          prev < filteredStations.length - 1 ? prev + 1 : 0
-        )
+        setSelectedIndex((prev) => (prev < filteredStations.length - 1 ? prev + 1 : 0))
         break
       case 'ArrowUp':
         e.preventDefault()
-        setSelectedIndex(prev => 
-          prev > 0 ? prev - 1 : filteredStations.length - 1
-        )
+        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : filteredStations.length - 1))
         break
       case 'Enter':
         e.preventDefault()
@@ -90,9 +87,9 @@ export function StationSearch({
   }
 
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn('relative', className)}>
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
         <input
           ref={inputRef}
           type="text"
@@ -101,17 +98,17 @@ export function StationSearch({
           onFocus={() => setIsOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
+          className="w-full rounded-lg border border-gray-300 py-3 pl-10 pr-4 text-lg focus:border-transparent focus:ring-2 focus:ring-blue-500"
           autoComplete="off"
         />
       </div>
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-80 overflow-auto">
+        <div className="absolute z-50 mt-1 max-h-80 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg">
           {query.length < 2 && showNearby && (
-            <div className="p-3 border-b border-gray-100">
-              <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+            <div className="border-b border-gray-100 p-3">
+              <div className="mb-2 flex items-center gap-2 text-sm text-gray-600">
                 <Navigation className="h-4 w-4" />
                 Nearby Stations
               </div>
@@ -119,7 +116,7 @@ export function StationSearch({
                 {getNearbyStations().map((station) => (
                   <li key={station.code}>
                     <button
-                      className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded flex items-center gap-2"
+                      className="flex w-full items-center gap-2 rounded px-3 py-2 text-left hover:bg-gray-50"
                       onClick={() => handleStationSelect(station)}
                     >
                       <MapPin className="h-4 w-4 text-gray-400" />
@@ -140,12 +137,12 @@ export function StationSearch({
                 <li key={station.code}>
                   <button
                     className={cn(
-                      "w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-center gap-3",
-                      selectedIndex === index && "bg-blue-50"
+                      'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50',
+                      selectedIndex === index && 'bg-blue-50'
                     )}
                     onClick={() => handleStationSelect(station)}
                   >
-                    <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                    <MapPin className="h-4 w-4 flex-shrink-0 text-gray-400" />
                     <div className="flex-1">
                       <div className="font-medium">{station.name}</div>
                       <div className="text-sm text-gray-500">{station.code}</div>
@@ -157,9 +154,7 @@ export function StationSearch({
           )}
 
           {query.length >= 2 && filteredStations.length === 0 && (
-            <div className="p-4 text-center text-gray-500">
-              No stations found for "{query}"
-            </div>
+            <div className="p-4 text-center text-gray-500">No stations found for "{query}"</div>
           )}
         </div>
       )}

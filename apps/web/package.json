@@ -7,7 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "type-check": "tsc --noEmit"
+    "lint:api": "eslint src/app/api",
+    "type-check": "tsc --noEmit",
+    "check": "npm run type-check && next lint",
+    "format": "next lint --fix",
+    "setup": "node setup.js",
+    "test:network-rail": "node test-network-rail.js"
   },
   "dependencies": {
     "@next/third-parties": "^15.5.0",
@@ -15,6 +20,8 @@
     "@tanstack/react-query": "^5.17.0",
     "clsx": "^2.1.1",
     "fast-xml-parser": "^5.2.5",
+    "ioredis": "^5.8.0",
+    "kafkajs": "^2.2.4",
     "lucide-react": "^0.542.0",
     "next": "15.5.2",
     "next-sitemap": "^4.2.0",

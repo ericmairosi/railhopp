@@ -23,24 +23,24 @@ interface DeparturesBoardProps {
   className?: string
 }
 
-export function DeparturesBoard({ 
-  departures, 
-  stationName, 
-  lastUpdated, 
+export function DeparturesBoard({
+  departures,
+  stationName,
+  lastUpdated,
   isLoading = false,
-  className 
+  className,
 }: DeparturesBoardProps) {
   return (
-    <div className={cn("bg-white rounded-lg shadow-lg border", className)}>
+    <div className={cn('rounded-lg border bg-white shadow-lg', className)}>
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 rounded-t-lg">
+      <div className="rounded-t-lg bg-gradient-to-r from-blue-600 to-blue-800 p-4 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold flex items-center gap-2">
+            <h2 className="flex items-center gap-2 text-xl font-bold">
               <MapPin className="h-5 w-5" />
               {stationName}
             </h2>
-            <p className="text-blue-100 text-sm">Live Departures</p>
+            <p className="text-sm text-blue-100">Live Departures</p>
           </div>
           <div className="text-right text-sm">
             <div className="flex items-center gap-1 text-blue-100">
@@ -55,12 +55,12 @@ export function DeparturesBoard({
       <div className="divide-y divide-gray-200">
         {isLoading ? (
           <div className="p-8 text-center text-gray-500">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600"></div>
             Loading departures...
           </div>
         ) : departures.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            <AlertTriangle className="h-8 w-8 mx-auto mb-4 text-gray-400" />
+            <AlertTriangle className="mx-auto mb-4 h-8 w-8 text-gray-400" />
             No departures scheduled
           </div>
         ) : (
@@ -74,12 +74,13 @@ export function DeparturesBoard({
 }
 
 function DepartureRow({ departure }: { departure: Departure }) {
-  const isDelayed = departure.status === 'delayed' && departure.delayMinutes && departure.delayMinutes > 0
+  const isDelayed =
+    departure.status === 'delayed' && departure.delayMinutes && departure.delayMinutes > 0
   const isCancelled = departure.status === 'cancelled'
-  
+
   return (
-    <div className="p-4 hover:bg-gray-50 transition-colors">
-      <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-center">
+    <div className="p-4 transition-colors hover:bg-gray-50">
+      <div className="grid grid-cols-1 items-center gap-4 md:grid-cols-6">
         {/* Time */}
         <div className="flex flex-col">
           <span className="font-mono text-lg font-semibold">
@@ -105,20 +106,25 @@ function DepartureRow({ departure }: { departure: Departure }) {
               {departure.platform}
             </Button>
           ) : (
-            <span className="text-gray-400 text-sm">TBC</span>
+            <span className="text-sm text-gray-400">TBC</span>
           )}
         </div>
 
         {/* Status */}
         <div className="text-center">
-          <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium", 
-            departure.status === 'on-time' && "bg-green-100 text-green-800",
-            departure.status === 'delayed' && "bg-amber-100 text-amber-800",
-            departure.status === 'cancelled' && "bg-red-100 text-red-800",
-            departure.status === 'diverted' && "bg-blue-100 text-blue-800"
-          )}>
+          <span
+            className={cn(
+              'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+              departure.status === 'on-time' && 'bg-green-100 text-green-800',
+              departure.status === 'delayed' && 'bg-amber-100 text-amber-800',
+              departure.status === 'cancelled' && 'bg-red-100 text-red-800',
+              departure.status === 'diverted' && 'bg-blue-100 text-blue-800'
+            )}
+          >
             {departure.status === 'on-time' && 'On time'}
-            {departure.status === 'delayed' && departure.delayMinutes && `${departure.delayMinutes}m late`}
+            {departure.status === 'delayed' &&
+              departure.delayMinutes &&
+              `${departure.delayMinutes}m late`}
             {departure.status === 'cancelled' && 'Cancelled'}
             {departure.status === 'diverted' && 'Diverted'}
           </span>

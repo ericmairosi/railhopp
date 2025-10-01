@@ -1,0 +1,110 @@
+# Dockerfile optimized for Fly.io deployment of Railhopp
+FROM node:20-alpine AS base
+
+# Install system dependencies
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+# Enable corepack for pnpm
+RUN corepack enable
+
+# ---- Dependencies Stage ----
+FROM base AS deps
+# Copy package files for dependency installation
+COPY package.json pnpm-lock.yaml turbo.json ./
+COPY apps/web/package.json ./apps/web/
+COPY packages/database/package.json ./packages/database/
+COPY packages/rail-data/package.json ./packages/rail-data/
+COPY packages/types/package.json ./packages/types/
+COPY packages/ui/package.json ./packages/ui/
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# ---- Build Stage ----
+FROM base AS builder
+WORKDIR /app
+
+# Copy all source files
+COPY . .
+
+# Copy dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+# Note: In monorepo setup, dependencies are hoisted to root node_modules
+# Individual package node_modules may not exist
+COPY --from=deps /app/packages ./packages
+
+# Build the application using turbo
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PATH="/app/node_modules/.bin:$PATH"
+
+# Debug: Comprehensive check of what was installed
+RUN echo "=== Root node_modules contents ==="
+RUN ls -la /app/node_modules/ | grep -E "(next|lucide|tailwind)" || echo "Nothing found"
+RUN echo "=== Root .bin contents ==="
+RUN ls -la /app/node_modules/.bin/ || echo "No .bin directory"
+RUN echo "=== Apps web directory ==="
+RUN ls -la /app/apps/web/
+RUN echo "=== Checking if Next.js package exists ==="
+RUN find /app -name "package.json" -exec grep -l "next" {} \; || echo "No Next.js packages found"
+
+# Try running pnpm install again with debug info
+WORKDIR /app
+RUN pnpm list --depth=0
+
+# Set up environment for build
+WORKDIR /app/apps/web
+ENV NODE_PATH="/app/node_modules"
+ENV PATH="/app/node_modules/.bin:$PATH"
+
+# Try running next build from root with proper module resolution
+RUN cd /app/apps/web && NODE_PATH=/app/node_modules /app/node_modules/.bin/next build 2>&1 || echo "Next.js binary failed"
+
+# Check what was built
+RUN echo "=== Build output ===" && ls -la /app/apps/web/.next/ || echo "No .next directory"
+RUN ls -la /app/apps/web/.next/standalone/ || echo "No standalone directory"
+
+# ---- Runtime Stage ----
+FROM base AS runner
+WORKDIR /app
+
+# Create a non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+
+# Copy the built application and dependencies
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/web/.next ./apps/web/.next
+COPY --from=builder /app/apps/web/public ./apps/web/public
+COPY --from=builder /app/apps/web/package.json ./apps/web/package.json
+COPY --from=builder /app/package.json ./package.json
+
+# Copy startup script
+COPY scripts/start.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
+
+# Create necessary directories and set permissions
+RUN mkdir -p /app/.next/cache
+RUN chown -R nextjs:nodejs /app /usr/local/bin/start.sh
+
+# Switch to non-root user
+USER nextjs
+
+# Expose the port
+EXPOSE 3000
+
+# Health check for Fly.io
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3000/api/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))" || exit 1
+
+# Set working directory for the app
+WORKDIR /app/apps/web
+
+# Start the Next.js application
+CMD ["/app/node_modules/.bin/next", "start", "-p", "3000"]

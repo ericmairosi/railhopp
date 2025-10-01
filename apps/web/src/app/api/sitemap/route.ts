@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 
 export async function GET() {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-  
+
   // Static pages
   const staticPages = [
     '',
@@ -18,11 +18,15 @@ export async function GET() {
   // Generate sitemap XML
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  ${staticPages.map(page => `
+  ${staticPages
+    .map(
+      (page) => `
   <sitemap>
     <loc>${baseUrl}${page}</loc>
     <lastmod>${new Date().toISOString()}</lastmod>
-  </sitemap>`).join('')}
+  </sitemap>`
+    )
+    .join('')}
   
   <!-- Dynamic sitemaps -->
   <sitemap>

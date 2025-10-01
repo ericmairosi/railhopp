@@ -3,18 +3,21 @@
 ## Core Architecture Components
 
 ### 1. API Client Layer
+
 - NetworkRailAPIManager (new)
-- NationalRailAPIManager (new) 
+- NationalRailAPIManager (new)
 - DarwinAPIManager (enhance existing)
 - KnowledgeStationAPIManager (enhance existing)
 
 ### 2. Data Aggregation Layer
+
 - RealTimeDataAggregator
 - StaticDataAggregator
 - DisruptionDataAggregator
 - PlanningDataAggregator
 
 ### 3. Caching & Performance
+
 - RedisCache for static data
 - In-memory cache for real-time data
 - WebSocket connection manager

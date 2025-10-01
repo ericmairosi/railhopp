@@ -63,6 +63,7 @@ curl "http://localhost:3000/api/darwin/departures?crs=KGX&numRows=5"
 ## 🔧 Current System Behavior
 
 ### With Valid Darwin API Key
+
 - ✅ Makes real SOAP requests to National Rail Darwin API
 - ✅ Parses XML responses to JSON
 - ✅ Returns live departure information
@@ -70,6 +71,7 @@ curl "http://localhost:3000/api/darwin/departures?crs=KGX&numRows=5"
 - ✅ Includes real disruption messages
 
 ### With Invalid/Missing API Key
+
 - ✅ Automatically falls back to mock data
 - ✅ Shows clear "sample data" message
 - ✅ Provides realistic demo experience
@@ -81,27 +83,27 @@ Both real and mock data use the same structure:
 
 ```typescript
 interface LiveStationBoard {
-  stationName: string;        // "London Kings Cross"
-  stationCode: string;        // "KGX"
-  generatedAt: string;        // ISO timestamp
-  departures: LiveDeparture[]; // Train services
-  messages?: StationMessage[]; // Alerts/notices
-  platformsAvailable?: boolean;
+  stationName: string // "London Kings Cross"
+  stationCode: string // "KGX"
+  generatedAt: string // ISO timestamp
+  departures: LiveDeparture[] // Train services
+  messages?: StationMessage[] // Alerts/notices
+  platformsAvailable?: boolean
 }
 
 interface LiveDeparture {
-  serviceID: string;          // Unique service identifier
-  operator: string;           // "London North Eastern Railway"
-  operatorCode: string;       // "GR"
-  destination: string;        // "Edinburgh"
-  destinationCRS: string;     // "EDB"
-  std: string;               // Scheduled time "14:30"
-  etd: string;               // Expected time "14:33" or "On time"
-  platform?: string;         // "1A" or undefined
-  cancelled?: boolean;        // Service cancellation status
-  delayReason?: string;       // Reason for delays
-  serviceType: string;        // Usually "train"
-  length?: number;            // Number of carriages
+  serviceID: string // Unique service identifier
+  operator: string // "London North Eastern Railway"
+  operatorCode: string // "GR"
+  destination: string // "Edinburgh"
+  destinationCRS: string // "EDB"
+  std: string // Scheduled time "14:30"
+  etd: string // Expected time "14:33" or "On time"
+  platform?: string // "1A" or undefined
+  cancelled?: boolean // Service cancellation status
+  delayReason?: string // Reason for delays
+  serviceType: string // Usually "train"
+  length?: number // Number of carriages
 }
 ```
 
@@ -110,16 +112,19 @@ interface LiveDeparture {
 ### Common Issues
 
 **401 Unauthorized Error**
+
 - API key is invalid, expired, or not registered
 - Check your National Rail developer account
 - Verify key format: `P-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`
 
 **No Data Returned**
+
 - Station code might be invalid (use 3-letter CRS codes)
 - No services at requested time
 - Weekend/holiday schedules differ
 
 **SOAP Parsing Errors**
+
 - API response format changed (contact developers)
 - Network connectivity issues
 - Temporary API outage
@@ -139,21 +144,26 @@ DEBUG=darwin:*
 ## 🎯 API Endpoints
 
 ### Get Departure Board
+
 ```
 GET /api/darwin/departures?crs=KGX&numRows=10
 ```
 
 **Parameters:**
+
 - `crs` (required): 3-letter station code
 - `numRows` (optional): Number of services to return (default: 10)
 - `filterCrs` (optional): Filter by destination station
 - `filterType` (optional): 'to' or 'from' filter
 
 **Response:**
+
 ```json
 {
   "success": true,
-  "data": { /* LiveStationBoard */ },
+  "data": {
+    /* LiveStationBoard */
+  },
   "timestamp": "2025-01-20T10:30:00.000Z",
   "source": "darwin", // or "mock"
   "apiStatus": {
@@ -165,6 +175,7 @@ GET /api/darwin/departures?crs=KGX&numRows=10
 ```
 
 ### Get Service Details
+
 ```
 GET /api/darwin/service/SERVICE_ID
 ```
@@ -174,6 +185,7 @@ Returns detailed information about a specific train service, including calling p
 ## 🔄 Migration Path
 
 ### Phase 1: ✅ **COMPLETED** - Infrastructure Ready
+
 - [x] SOAP client implementation
 - [x] XML parsing with fast-xml-parser
 - [x] Error handling and fallbacks
@@ -181,12 +193,14 @@ Returns detailed information about a specific train service, including calling p
 - [x] API endpoint structure
 
 ### Phase 2: 🔧 **IN PROGRESS** - Real Data Integration
+
 - [x] Test framework for Darwin API
 - [ ] Obtain valid Darwin API credentials
 - [ ] Production deployment configuration
 - [ ] Frontend updates for real data
 
 ### Phase 3: 🚀 **NEXT** - Enhanced Features
+
 - [ ] Real-time updates via WebSockets
 - [ ] Caching layer for better performance
 - [ ] Multiple data source integration
@@ -211,6 +225,7 @@ Returns detailed information about a specific train service, including calling p
 ---
 
 **Next Steps:**
+
 1. Obtain valid Darwin API key from National Rail
 2. Update environment configuration
 3. Test with real API endpoints
