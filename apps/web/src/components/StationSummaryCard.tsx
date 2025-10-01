@@ -19,8 +19,25 @@ export default function StationSummaryCard() {
       try {
         const res = await fetch(`/api/knowledgebase/station?crs=${encodeURIComponent(crs)}`)
         const json = await res.json()
-        if (json.success) setData(json.data)
-        else setError(json.error?.message || 'Failed to load station info')
+        if (json.success) {
+          setData(json.data)
+        } else {
+          // Fallback to suggestions to avoid blank panel
+          try {
+            const sres = await fetch(`/api/stations/suggest?q=${encodeURIComponent(crs)}`)
+            const sjson = await sres.json()
+            const match = Array.isArray(sjson?.data)
+              ? (sjson.data.find((s: any) => (s.code || '').toUpperCase() === crs.toUpperCase()) || sjson.data[0])
+              : null
+            if (match) {
+              setData({ code: match.code, name: match.name })
+            } else {
+              setError(json.error?.message || 'Failed to load station info')
+            }
+          } catch (e) {
+            setError(json.error?.message || 'Failed to load station info')
+          }
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Network error')
       } finally {

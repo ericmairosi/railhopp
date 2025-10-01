@@ -9,6 +9,7 @@ import { getNationalRailClient } from '@/lib/national-rail/client'
 import { LiveStationBoard, LiveDeparture, TrainServiceDetails } from '@/lib/darwin/types'
 import { EnhancedStationInfo, DisruptionInfo } from '@/lib/knowledge-station/types'
 import { EnhancedTrainService, TrainMovement } from '@/lib/network-rail/types'
+import { getRTTClient } from '@/lib/rtt/client'
 
 export interface MultiAPIRequest {
   crs: string
@@ -81,6 +82,7 @@ export class MultiAPIAggregator {
   private networkRailClient = getNetworkRailClient()
   private knowledgeStationClient = getKnowledgeStationClient()
   private nationalRailClient = getNationalRailClient()
+  private rttClient = getRTTClient()
 
   // Cache for reducing API calls
   private cache = new Map<string, { data: any; expires: number }>()
@@ -109,32 +111,91 @@ export class MultiAPIAggregator {
     let apiCallsUsed = 0
 
     try {
-      // 1. Get primary data from Darwin (user's preferred source)
-      const darwinBoard = await this.darwinClient.getStationBoard({
-        crs: request.crs,
-        numRows: request.numRows || 10,
-        filterCrs: request.filterCrs,
-        filterType: request.filterType,
-        timeOffset: request.timeOffset,
-        timeWindow: request.timeWindow,
-      })
+      // 1. Try primary data from Darwin (user's preferred source)
+      let darwinBoard: LiveStationBoard | null = null
+      try {
+        darwinBoard = await this.darwinClient.getStationBoard({
+          crs: request.crs,
+          numRows: request.numRows || 10,
+          filterCrs: request.filterCrs,
+          filterType: request.filterType,
+          timeOffset: request.timeOffset,
+          timeWindow: request.timeWindow,
+        })
+        apiCallsUsed++
+      } catch (e) {
+        dataSources.failed.push('darwin')
+      }
 
-      apiCallsUsed++
+      // 2. Initialize enhanced departures (from Darwin or fallback)
+      let enhancedDepartures: EnhancedDeparture[] = []
+      let stationName = darwinBoard?.stationName || `Station ${request.crs}`
+      let stationCode = request.crs
 
-      // 2. Initialize enhanced departures
-      const enhancedDepartures: EnhancedDeparture[] = darwinBoard.departures.map((dep) => ({
-        ...dep,
-        realTimePosition: undefined,
-        movements: undefined,
-        facilityAlerts: undefined,
-        accessibilityInfo: undefined,
-        dataQuality: {
-          darwinFresh: true,
-          networkRailFresh: false,
-          knowledgeStationFresh: false,
-          confidence: 75, // Base confidence from Darwin
-        },
-      }))
+      if (darwinBoard) {
+        dataSources.primary = 'darwin'
+        enhancedDepartures = darwinBoard.departures.map((dep) => ({
+          ...dep,
+          realTimePosition: undefined,
+          movements: undefined,
+          facilityAlerts: undefined,
+          accessibilityInfo: undefined,
+          dataQuality: {
+            darwinFresh: true,
+            networkRailFresh: false,
+            knowledgeStationFresh: false,
+            confidence: 75, // Base confidence from Darwin
+          },
+        }))
+      } else {
+        // Darwin unavailable -> fall back to RTT.io if configured
+        if (this.rttClient && this.rttClient.isEnabled()) {
+          try {
+            const rttDeps = await this.rttClient.getDepartures({
+              crs: request.crs,
+              filterType: request.filterType,
+              filterCrs: request.filterCrs,
+              services: 'passenger',
+            })
+            apiCallsUsed++
+
+            enhancedDepartures = rttDeps.map((svc) => ({
+              serviceID: svc.serviceId,
+              operator: svc.operatorName,
+              operatorCode: svc.operatorCode,
+              destination: svc.destination.name,
+              destinationCRS: svc.destination.crs,
+              origin: svc.origin?.name,
+              originCRS: svc.origin?.crs,
+              std: svc.scheduledDeparture || '',
+              etd: svc.estimatedDeparture || (svc.delayMinutes === 0 ? 'On time' : ''),
+              platform: svc.platform,
+              serviceType: 'Train',
+              cancelled: svc.isCancelled,
+              length: svc.formation?.length,
+              delayReason: svc.cancelReason,
+              activities: [],
+              dataQuality: {
+                darwinFresh: false,
+                networkRailFresh: false,
+                knowledgeStationFresh: false,
+                confidence: 60,
+              },
+            }))
+
+            // Try to get a station name via RTT
+            try {
+              const info = await this.rttClient.getStationInfo(request.crs)
+              if (info?.name) stationName = info.name
+            } catch {}
+
+            dataSources.primary = 'rtt'
+          } catch (err) {
+            dataSources.failed.push('rtt')
+            // Leave enhancedDepartures empty; we'll still return a valid board
+          }
+        }
+      }
 
       // 3. Enhance with Network Rail data if requested
       if (request.includeRealTimePosition && this.networkRailClient) {
@@ -182,10 +243,10 @@ export class MultiAPIAggregator {
 
       // 6. Build aggregated response
       const aggregatedBoard: AggregatedStationBoard = {
-        stationName: darwinBoard.stationName,
-        stationCode: darwinBoard.stationCode,
+        stationName,
+        stationCode,
         departures: enhancedDepartures,
-        generatedAt: darwinBoard.generatedAt,
+        generatedAt: (darwinBoard?.generatedAt || new Date().toISOString()),
         dataSources,
         stationInfo,
         disruptions,
