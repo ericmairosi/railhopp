@@ -340,7 +340,7 @@ export default function RailhoppHome() {
                       ].find((s) => s.code === stationCode)
                       if (stationName) setDepartureStation(stationName)
                     }}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-transparent focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="KGX">London Kings Cross</option>
                     <option value="EUS">London Euston</option>

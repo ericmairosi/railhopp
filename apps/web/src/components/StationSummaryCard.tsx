@@ -31,6 +31,7 @@ export default function StationSummaryCard() {
               : null
             if (match) {
               setData({ code: match.code, name: match.name })
+              setError(null)
             } else {
               setError(json.error?.message || 'Failed to load station info')
             }

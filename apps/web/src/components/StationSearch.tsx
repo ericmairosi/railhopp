@@ -157,7 +157,7 @@ export default function StationSearch({
           onBlur={handleBlur}
           placeholder={placeholder}
           disabled={disabled}
-          className={`w-full rounded-lg border px-4 py-3 pl-10 text-sm outline-none transition-colors ${
+          className={`w-full rounded-lg border px-4 py-3 pl-10 text-sm outline-none transition-colors placeholder:text-slate-500 ${
             disabled
               ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
               : 'border-slate-300 bg-white text-slate-900 focus:border-transparent focus:ring-2 focus:ring-blue-500'
