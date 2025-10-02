@@ -68,6 +68,13 @@ interface EnhancedDepartureBoardProps {
   compact?: boolean
 }
 
+type SourceDiagnostics = {
+  darwin: { attempted: boolean; available: boolean; error?: string }
+  rtt: { attempted: boolean; available: boolean; error?: string }
+  networkRail: { attempted: boolean; enhanced: boolean; error?: string }
+  knowledgeStation: { attempted: boolean; enhanced: boolean; error?: string }
+}
+
 export default function EnhancedDepartureBoard({
   stationCode,
   maxResults = 15,
@@ -82,11 +89,19 @@ export default function EnhancedDepartureBoard({
   const [stationBoard, setStationBoard] = useState<EnhancedStationBoard | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sourceInfo, setSourceInfo] = useState<{
+    primary: string
+    enhanced: string[]
+    failed: string[]
+    diagnostics?: SourceDiagnostics
+  } | null>(null)
+  const [showSourceDetails, setShowSourceDetails] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [connectionStatus, setConnectionStatus] = useState<
     'connected' | 'disconnected' | 'reconnecting'
   >('connected')
   const [selectedService, setSelectedService] = useState<string | null>(null)
+  const [pubSubStatus, setPubSubStatus] = useState<{ enabled: boolean; ok: boolean } | null>(null)
 
   // UI controls
   const [viewMode, setViewMode] = useState<'simple' | 'detailed'>('detailed')
@@ -114,18 +129,42 @@ export default function EnhancedDepartureBoard({
         }
 
         const response = await fetch(`/api/unified/departures?${params.toString()}`)
-        const result = await response.json()
+        let result = await response.json()
+
+        // Fallback chain: unified -> v2 -> raw darwin
+        if (result?.success && Array.isArray(result.data?.departures) && result.data.departures.length === 0) {
+          try {
+            const r2 = await fetch(`/api/v2/departures?${params.toString()}`)
+            const json2 = await r2.json()
+            if (json2?.success && Array.isArray(json2.data?.departures) && json2.data.departures.length > 0) {
+              result = json2
+            } else {
+              const rd = await fetch(`/api/darwin/departures?${params.toString()}`)
+              const jd = await rd.json()
+              if (jd?.success) {
+                result = { success: true, data: jd.data }
+              }
+            }
+          } catch {}
+        }
 
         if (result.success) {
           const d = result.data
+
+          // Collect source diagnostics if available
+          const primary = d.dataSource || d.dataSources?.primary || 'unknown'
+          const enhanced = d.enhancedSources || d.dataSources?.enhanced || []
+          const failed = d.failedSources || d.dataSources?.failed || []
+          const diagnostics: SourceDiagnostics | undefined = result.metadata?.diagnostics
+          setSourceInfo({ primary, enhanced, failed, diagnostics })
           setStationBoard({
-            locationName: d.stationName,
-            stationName: d.stationName,
-            stationCode: d.stationCode,
-            crs: d.stationCode,
-            departures: d.departures || [],
-            generatedAt: d.generatedAt,
-            messages: undefined,
+            locationName: d.stationName || d.locationName || `Station ${crs.toUpperCase()}`,
+            stationName: d.stationName || d.locationName || `Station ${crs.toUpperCase()}`,
+            stationCode: d.stationCode || d.crs || crs.toUpperCase(),
+            crs: d.stationCode || d.crs || crs.toUpperCase(),
+            departures: (d.departures || d.trainServices || []),
+            generatedAt: d.generatedAt || new Date().toISOString(),
+            messages: d.messages,
             platformsAvailable: d.platformsAvailable ?? true,
           })
           setLastUpdated(new Date())
@@ -189,6 +228,29 @@ export default function EnhancedDepartureBoard({
       return () => clearInterval(interval)
     }
   }, [stationCode, autoRefresh, refreshInterval, fetchDepartures])
+
+  // Pub/Sub status polling (every 60s)
+  useEffect(() => {
+    let mounted = true
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch('/api/darwin/pubsub/status')
+        const json = await res.json()
+        if (mounted) {
+          if (json?.success) setPubSubStatus({ enabled: !!json.data?.enabled, ok: !!json.data?.ok })
+          else setPubSubStatus({ enabled: false, ok: false })
+        }
+      } catch {
+        if (mounted) setPubSubStatus({ enabled: false, ok: false })
+      }
+    }
+    fetchStatus()
+    const interval = setInterval(fetchStatus, 60000)
+    return () => {
+      mounted = false
+      clearInterval(interval)
+    }
+  }, [])
 
   const getServiceStatus = (departure: EnhancedDeparture) => {
     if (departure.cancelled)
@@ -388,7 +450,7 @@ export default function EnhancedDepartureBoard({
                     {/* Status */}
                     <div className="col-span-2">
                       <div className="flex items-center gap-2">
-                        {getStatusIcon(serviceStatus.status as any)}
+                        {getStatusIcon(serviceStatus.status)}
                         <span
                           className={cn(
                             'font-mono text-sm uppercase tracking-wide',
@@ -414,7 +476,11 @@ export default function EnhancedDepartureBoard({
         {/* Footer */}
         <div className="border-t border-blue-600 bg-slate-900 px-6 py-3">
           <div className="flex items-center justify-between font-mono text-xs text-blue-300">
-            <div>LIVE DATA FROM DARWIN API</div>
+            <div>
+              LIVE DATA FROM {sourceInfo?.primary ? sourceInfo.primary.toUpperCase() : 'UNKNOWN'}
+              <span className="mx-2">•</span>
+              PUBSUB: {pubSubStatus?.ok ? 'CONNECTED' : 'UNAVAILABLE'}
+            </div>
             <div className="flex items-center gap-2">
               {connectionStatus === 'connected' ? (
                 <>
@@ -465,6 +531,12 @@ export default function EnhancedDepartureBoard({
                 <WifiOff className="h-4 w-4 text-red-300" />
               )}
               <span className="text-sm capitalize text-white">{connectionStatus}</span>
+            </div>
+
+            {/* Pub/Sub status badge */}
+            <div className="hidden items-center gap-2 rounded-md bg-white/10 px-2 py-1 text-xs text-white sm:flex">
+              <span className={`inline-block h-2 w-2 rounded-full ${pubSubStatus?.ok ? 'bg-green-400' : 'bg-red-400'}`} />
+              <span>pubsub: {pubSubStatus?.ok ? 'connected' : 'unavailable'}</span>
             </div>
 
             {/* Manual Refresh */}
@@ -522,6 +594,70 @@ export default function EnhancedDepartureBoard({
             className="w-24 rounded-md border border-gray-300 px-3 py-1 text-sm focus:border-transparent focus:ring-2 focus:ring-blue-500"
           />
         </div>
+      </div>
+
+      {/* Data Sources Panel */}
+      <div className="border-b border-gray-200 bg-white/70 px-6 py-2 text-xs text-gray-700">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            <span>
+              Source: <span className="font-semibold uppercase">{sourceInfo?.primary || 'unknown'}</span>
+            </span>
+            {sourceInfo?.enhanced && sourceInfo.enhanced.length > 0 && (
+              <span>
+                Enhanced: {sourceInfo.enhanced.map((s, i) => (
+                  <span key={`${s}-${i}`} className="uppercase">
+                    {s}
+                    {i < sourceInfo.enhanced.length - 1 ? ', ' : ''}
+                  </span>
+                ))}
+              </span>
+            )}
+            {sourceInfo?.failed && sourceInfo.failed.length > 0 && (
+              <span className="text-red-600">
+                Failed: {sourceInfo.failed.map((s, i) => (
+                  <span key={`${s}-${i}`} className="uppercase">
+                    {s}
+                    {i < sourceInfo.failed.length - 1 ? ', ' : ''}
+                  </span>
+                ))}
+              </span>
+            )}
+          </div>
+          {sourceInfo?.diagnostics && (
+            <button
+              onClick={() => setShowSourceDetails((v) => !v)}
+              className="text-blue-600 hover:underline"
+            >
+              {showSourceDetails ? 'Hide details' : 'Show details'}
+            </button>
+          )}
+        </div>
+        {showSourceDetails && sourceInfo?.diagnostics && (
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {(['darwin', 'rtt', 'networkRail', 'knowledgeStation'] as const).map((key) => {
+              const d = sourceInfo.diagnostics![key]
+              return (
+                <div key={key} className="rounded-md border border-gray-200 bg-white p-2">
+                  <div className="mb-1 font-semibold uppercase">{key}</div>
+                  <div className="text-gray-600">
+                    {(() => {
+                      const ok = key === 'networkRail' || key === 'knowledgeStation'
+                        ? (d as { enhanced: boolean }).enhanced
+                        : (d as { available: boolean }).available
+                      return ok ? (
+                        <span className="text-green-700">OK</span>
+                      ) : (
+                        <span className="text-red-700">Not available</span>
+                      )
+                    })()}
+                  </div>
+                  {d.error && <div className="mt-1 text-xs text-red-600">{d.error}</div>}
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Service Messages */}
@@ -720,7 +856,7 @@ export default function EnhancedDepartureBoard({
                             {/* Status */}
                             <div className={cn(viewMode === 'simple' ? 'col-span-2' : 'col-span-2')}>
                               <div className="flex items-center gap-2">
-                                {getStatusIcon(serviceStatus.status as any)}
+                                {getStatusIcon(serviceStatus.status)}
                                 <span className={cn('text-sm font-medium', serviceStatus.text)}>
                                   {serviceStatus.status}
                                 </span>

@@ -59,7 +59,9 @@ export class CorpusClient {
     try {
       console.log('Loading CORPUS location reference data...')
 
-      const response = await this.makeHTTPRequest('/ntrod/CORPUSExtract')
+      const response = await this.makeHTTPRequest<{ TIPLOCDATA?: CorpusEntry[] }>(
+        '/ntrod/CORPUSExtract'
+      )
 
       if (!response.TIPLOCDATA) {
         throw new NetworkRailAPIError('Invalid CORPUS data structure', 'INVALID_DATA', { response })
@@ -178,7 +180,8 @@ export class CorpusClient {
     longitude: number,
     radiusKm: number = 10
   ): ProcessedCorpusEntry[] {
-    const nearby: ProcessedCorpusEntry[] = []
+    type NearbyEntry = ProcessedCorpusEntry & { distance: number }
+    const candidates: NearbyEntry[] = []
 
     for (const entry of this.corpusData.values()) {
       if (entry.coordinates) {
@@ -190,16 +193,18 @@ export class CorpusClient {
         )
 
         if (distance <= radiusKm) {
-          nearby.push({
+          candidates.push({
             ...entry,
-            // Add distance for sorting
             distance,
-          } as any)
+          })
         }
       }
     }
 
-    return nearby.sort((a: any, b: any) => a.distance - b.distance).slice(0, 50) // Limit to 50 results
+    return candidates
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 50)
+      .map(({ distance: _omit, ...rest }) => rest)
   }
 
   /**
@@ -410,7 +415,10 @@ export class CorpusClient {
   /**
    * Make HTTP request to Network Rail API
    */
-  private async makeHTTPRequest(endpoint: string, options: RequestInit = {}): Promise<any> {
+  private async makeHTTPRequest<T = unknown>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
     const url = `${this.config.apiUrl}${endpoint}`
     const credentials = Buffer.from(`${this.config.username}:${this.config.password}`).toString(
       'base64'

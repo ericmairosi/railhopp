@@ -2,7 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getMultiAPIAggregator } from '@/lib/services/multi-api-aggregator'
 import { DarwinAPIError } from '@/lib/darwin/types'
-import { RTTAPIError } from '@/lib/rtt/types'
 import { KnowledgeStationAPIError } from '@/lib/knowledge-station/types'
 
 export async function GET(request: NextRequest) {

@@ -170,3 +170,38 @@ curl -H "Authorization: Bearer your_token" \
 | TransportAPI | ✅ 1,000 calls/month | £30/month           | Journey planning          |
 
 **Recommendation**: Start with Darwin (free) + RTT.io (free tier) for the best balance of features and cost.
+
+---
+
+## Cache TTL and Status Endpoints (New)
+
+### Configurable Aggregator Cache TTL
+
+Set the TTL (in seconds) for the multi-API aggregator cache. Defaults to 30 seconds if unset:
+
+```bash
+# apps/web/.env.local
+MULTI_API_AGGREGATOR_CACHE_TTL_SECONDS=30
+```
+
+### Health and Diagnostics
+
+- Service status (availability checks):
+
+```bash
+curl "http://localhost:3000/api/status"
+```
+
+- Last aggregation diagnostics snapshot (optionally summarized):
+
+```bash
+# Raw diagnostics from last departures aggregation
+curl "http://localhost:3000/api/status/diagnostics"
+
+# Add summary counts (attempted/available/enhanced/failed)
+curl "http://localhost:3000/api/status/diagnostics?summary=true"
+```
+
+Notes:
+- Diagnostics are captured when you hit `/api/unified/departures` or `/api/v2/departures`.
+- If you haven’t called those yet, diagnostics will be empty.

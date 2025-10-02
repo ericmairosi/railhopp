@@ -13,6 +13,8 @@ import {
   VSTPMessage,
   TrainDescriberMessage,
   EnhancedTrainService,
+  TrainSchedule,
+  TimingPoint,
 } from './types'
 
 export interface AggregatedTrainData {
@@ -206,7 +208,7 @@ export class NetworkRailFeedsAggregator {
   /**
    * Get train schedule information
    */
-  async getTrainSchedule(trainUid: string): Promise<any> {
+  async getTrainSchedule(trainUid: string): Promise<TrainSchedule[]> {
     return await this.scheduleClient.getSchedules({ trainUid })
   }
 
@@ -218,14 +220,14 @@ export class NetworkRailFeedsAggregator {
     destination?: string
     operator?: string
     departureTime?: string
-  }): Promise<any[]> {
+  }): Promise<TrainSchedule[]> {
     return await this.scheduleClient.searchSchedules(criteria)
   }
 
   /**
    * Get timing point information
    */
-  async getTimingPoint(tiploc: string): Promise<any> {
+  async getTimingPoint(tiploc: string): Promise<TimingPoint | null> {
     return await this.tpsClient.getTimingPoint(tiploc)
   }
 
@@ -236,14 +238,22 @@ export class NetworkRailFeedsAggregator {
     name?: string
     crs?: string
     limit?: number
-  }): Promise<any[]> {
+  }): Promise<TimingPoint[]> {
     return await this.tpsClient.searchTimingPoints(criteria)
   }
 
   /**
    * Get route information between stations
    */
-  async getRoute(fromTiploc: string, toTiploc: string): Promise<any> {
+  async getRoute(
+    fromTiploc: string,
+    toTiploc: string
+  ): Promise<{
+    path: TimingPoint[]
+    totalMileage: number
+    routes: string[]
+    estimatedTime: number
+  } | null> {
     return await this.tpsClient.findPath(fromTiploc, toTiploc)
   }
 

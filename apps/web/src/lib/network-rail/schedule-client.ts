@@ -30,7 +30,7 @@ export class ScheduleClient extends BaseNetworkRailClient<ScheduleMessageWrapper
     })
   }
 
-  protected parseMessage(rawMessage: any): ScheduleMessageWrapper {
+  protected parseMessage(rawMessage: unknown): ScheduleMessageWrapper {
     try {
       const data = typeof rawMessage === 'string' ? JSON.parse(rawMessage) : rawMessage
 
@@ -164,9 +164,11 @@ export class ScheduleClient extends BaseNetworkRailClient<ScheduleMessageWrapper
     this.messages.forEach((message) => {
       if (!since || message.timestamp > since) {
         if (message.data) {
+          const txType = (message.data as { transaction_type?: string })?.transaction_type
           updates.push({
             recordType: message.messageType === 'schedule' ? 'schedule' : 'association',
-            transactionType: message.data.transaction_type || 'Create',
+            transactionType:
+              txType === 'Update' || txType === 'Delete' || txType === 'Create' ? txType : 'Create',
             data: message.data,
             timestamp: message.timestamp,
             sequenceNumber: message.sequenceNumber,

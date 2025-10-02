@@ -218,7 +218,7 @@ class DarwinTester {
     if (!this.results.apiEndpoints['Darwin Departures']?.working) {
       console.log('• Darwin departures API is not working - check configuration');
     }
-    console.log('• The system will fall back to RTT API and mock data when Darwin is unavailable');
+    console.log('• When Darwin is unavailable, the API returns a clear error (no mock fallback).');
   }
 
   async testTcpConnection(hostname, port) {

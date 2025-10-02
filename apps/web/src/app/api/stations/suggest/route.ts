@@ -4,6 +4,12 @@ import { getKnowledgebaseClient } from '@/lib/knowledgebase/client'
 import { CorpusClient } from '@/lib/network-rail/corpus-client'
 import { NetworkRailConfig } from '@/lib/network-rail/types'
 
+declare global {
+  // Global-cached Network Rail CORPUS client (server-only)
+  // eslint-disable-next-line no-var
+  var __corpusClient: CorpusClient | undefined
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -53,17 +59,13 @@ export async function GET(request: NextRequest) {
       }
       if (cfg.apiUrl && cfg.username && cfg.password) {
         // Module-level singleton to avoid reloading between requests
-        // @ts-ignore
-        if (!(global as any).__corpusClient) {
-          // @ts-ignore
-          (global as any).__corpusClient = new CorpusClient(cfg)
+        if (!globalThis.__corpusClient) {
+          globalThis.__corpusClient = new CorpusClient(cfg)
           try {
-            // @ts-ignore
-            await (global as any).__corpusClient.loadCorpusData()
+            await globalThis.__corpusClient.loadCorpusData()
           } catch {}
         }
-        // @ts-ignore
-        const corpus: CorpusClient = (global as any).__corpusClient
+        const corpus = globalThis.__corpusClient
         if (corpus) {
           const stations = corpus
             .getPassengerStations()

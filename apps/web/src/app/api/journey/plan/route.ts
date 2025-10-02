@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
           departure: service.platforms?.departure,
           arrival: service.platforms?.arrival,
         },
-        segments: service.segments.map((segment: JourneySegment, segIdx: number) => ({
+        segments: service.segments.map((segment: SimpleSegment, segIdx: number): JourneySegment => ({
           ...segment,
           id: `segment-${i}-${segIdx}`,
           departureTime:
@@ -147,9 +147,23 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function getRouteData(from: string, to: string) {
+type SimpleSegment = { from: { code: string; name: string }; to: { code: string; name: string }; operator: string; duration: string }
+
+type RouteService = {
+  operator: string
+  duration: number
+  frequency: number
+  changes: number
+  price?: { adult: number; currency: string }
+  platforms?: { departure?: string; arrival?: string }
+  segments: SimpleSegment[]
+}
+
+type RouteData = { services: RouteService[] }
+
+function getRouteData(from: string, to: string): RouteData {
   // Simulate route data based on common UK rail connections
-  const routes: Record<string, any> = {
+  const routes: Record<string, RouteData> = {
     'KGX-YOR': {
       services: [
         {
@@ -220,10 +234,10 @@ function getRouteData(from: string, to: string) {
     return routes[routeKey]
   } else if (routes[reverseKey]) {
     // Reverse the route
-    const reverseRoute = { ...routes[reverseKey] }
-    reverseRoute.services = reverseRoute.services.map((service: any) => ({
+    const reverseRoute: RouteData = { ...routes[reverseKey] }
+    reverseRoute.services = reverseRoute.services.map((service: RouteService) => ({
       ...service,
-      segments: service.segments.map((segment: any) => ({
+      segments: service.segments.map((segment: SimpleSegment) => ({
         ...segment,
         from: segment.to,
         to: segment.from,

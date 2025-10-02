@@ -33,6 +33,11 @@ export default function DashboardPage() {
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null)
   const [currentTime, setCurrentTime] = useState<string>('')
   const [mounted, setMounted] = useState(false)
+  const [pubSubStatus, setPubSubStatus] = useState<{
+    enabled: boolean
+    ok: boolean
+    cache: { totalServices: number; lastUpdate: string | null; cacheAge: number | null }
+  } | null>(null)
   const [quickStations] = useState<QuickStation[]>([
     { code: 'KGX', name: 'Kings Cross', region: 'London', onTimePerformance: 92, currentDelays: 3 },
     {
@@ -66,8 +71,10 @@ export default function DashboardPage() {
     setCurrentTime(new Date().toLocaleTimeString())
 
     fetchDashboardStats()
+    fetchPubSubStatus()
     const interval = setInterval(() => {
       fetchDashboardStats()
+      fetchPubSubStatus()
       setCurrentTime(new Date().toLocaleTimeString())
     }, 60000) // Update every minute
     return () => clearInterval(interval)
@@ -101,6 +108,20 @@ export default function DashboardPage() {
         averageDelay: 4.3,
         networkStatus: 'good',
       })
+    }
+  }
+
+  const fetchPubSubStatus = async () => {
+    try {
+      const res = await fetch('/api/darwin/pubsub/status')
+      const json = await res.json()
+      if (json?.success) {
+        setPubSubStatus(json.data)
+      } else {
+        setPubSubStatus({ enabled: false, ok: false, cache: { totalServices: 0, lastUpdate: null, cacheAge: null } })
+      }
+    } catch {
+      setPubSubStatus({ enabled: false, ok: false, cache: { totalServices: 0, lastUpdate: null, cacheAge: null } })
     }
   }
 
@@ -248,6 +269,36 @@ export default function DashboardPage() {
                 </div>
               </div>
             )}
+
+            {/* Darwin Pub/Sub Status */}
+            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">Darwin Pub/Sub</h3>
+                <div className="flex items-center gap-2 text-sm">
+                  <span
+                    className={`inline-block h-2 w-2 rounded-full ${pubSubStatus?.ok ? 'bg-green-500' : 'bg-red-500'}`}
+                    aria-hidden
+                  />
+                  <span className="text-gray-600">{pubSubStatus?.ok ? 'Connected' : 'Unavailable'}</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div>
+                  <div className="text-sm text-gray-500">Enabled</div>
+                  <div className="text-base font-semibold text-gray-900">{pubSubStatus?.enabled ? 'Yes' : 'No'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500">Cached Services</div>
+                  <div className="text-base font-semibold text-gray-900">{pubSubStatus?.cache?.totalServices ?? 0}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500">Last Update</div>
+                  <div className="text-base font-semibold text-gray-900">
+                    {pubSubStatus?.cache?.lastUpdate ? new Date(pubSubStatus.cache.lastUpdate).toLocaleTimeString() : 'N/A'}
+                  </div>
+                </div>
+              </div>
+            </div>
 
             {/* Quick Station Access */}
             <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">

@@ -14,9 +14,35 @@ import {
   NetworkRailStatus,
 } from './types'
 
+// Minimal STOMP typings we rely on
+type StompConnectOptions = { host: string; port: number; connectHeaders: Record<string, string> }
+type StompMessage = {
+  readString: (encoding: string, callback: (error: unknown, body: string) => void) => void
+  ack: () => void
+}
+type StompClient = {
+  on: (event: 'error' | 'disconnect', listener: (...args: unknown[]) => void) => void
+  subscribe: (
+    headers: { destination: string; ack?: string },
+    callback: (error: unknown, message: StompMessage) => void
+  ) => void
+  disconnect: () => void
+}
+
+type StompitModule = {
+  connect: (
+    options: StompConnectOptions,
+    callback: (error: unknown, client: StompClient) => void
+  ) => void
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
 export class NetworkRailClient {
   private config: NetworkRailConfig
-  private stompClient: any = null
+  private stompClient: StompClient | null = null
   private isConnected = false
   private reconnectAttempts = 0
   private maxReconnectAttempts = 10
@@ -35,9 +61,9 @@ export class NetworkRailClient {
   async initializeSTOMPConnection(): Promise<void> {
     try {
       // Dynamic import for STOMP client (Node.js environment)
-      const stompit = require('stompit')
+      const stompit = (await import('stompit')) as unknown as StompitModule
 
-      const connectOptions = {
+      const connectOptions: StompConnectOptions = {
         host: this.extractHostFromUrl(this.config.stompUrl),
         port: this.extractPortFromUrl(this.config.stompUrl),
         connectHeaders: {
@@ -48,8 +74,8 @@ export class NetworkRailClient {
         },
       }
 
-      this.stompClient = await new Promise((resolve, reject) => {
-        stompit.connect(connectOptions, (error: any, client: any) => {
+      this.stompClient = await new Promise<StompClient>((resolve, reject) => {
+        stompit.connect(connectOptions, (error: unknown, client: StompClient) => {
           if (error) {
             reject(
               new NetworkRailAPIError(
@@ -93,14 +119,14 @@ export class NetworkRailClient {
       ack: 'client-individual',
     }
 
-    this.stompClient.subscribe(subscribeHeaders, (error: any, message: any) => {
+    this.stompClient.subscribe(subscribeHeaders, (error: unknown, message: StompMessage) => {
       if (error) {
         console.error('Train movements subscription error:', error)
         return
       }
 
       try {
-        message.readString('utf-8', (error: any, body: string) => {
+        message.readString('utf-8', (error: unknown, body: string) => {
           if (error) {
             console.error('Error reading train movement message:', error)
             return
@@ -132,14 +158,14 @@ export class NetworkRailClient {
       ack: 'client-individual',
     }
 
-    this.stompClient.subscribe(subscribeHeaders, (error: any, message: any) => {
+    this.stompClient.subscribe(subscribeHeaders, (error: unknown, message: StompMessage) => {
       if (error) {
         console.error('VSTP subscription error:', error)
         return
       }
 
       try {
-        message.readString('utf-8', (error: any, body: string) => {
+        message.readString('utf-8', (error: unknown, body: string) => {
           if (error) {
             console.error('Error reading VSTP message:', error)
             return
@@ -174,14 +200,14 @@ export class NetworkRailClient {
       ack: 'client-individual',
     }
 
-    this.stompClient.subscribe(subscribeHeaders, (error: any, message: any) => {
+    this.stompClient.subscribe(subscribeHeaders, (error: unknown, message: StompMessage) => {
       if (error) {
         console.error('Train Describer subscription error:', error)
         return
       }
 
       try {
-        message.readString('utf-8', (error: any, body: string) => {
+        message.readString('utf-8', (error: unknown, body: string) => {
           if (error) {
             console.error('Error reading Train Describer message:', error)
             return
@@ -205,7 +231,7 @@ export class NetworkRailClient {
    */
   async getCorpusData(): Promise<CorpusEntry[]> {
     try {
-      const response = await this.makeHTTPRequest('/api/corpus')
+      const response = await this.makeHTTPRequest<{ CORPUS?: CorpusEntry[] }>('/api/corpus')
       return response.CORPUS || []
     } catch (error) {
       throw new NetworkRailAPIError('Failed to fetch CORPUS data', 'CORPUS_ERROR', error)
@@ -217,7 +243,7 @@ export class NetworkRailClient {
    */
   async getSmartData(): Promise<SmartEntry[]> {
     try {
-      const response = await this.makeHTTPRequest('/api/smart')
+      const response = await this.makeHTTPRequest<{ SMART?: SmartEntry[] }>('/api/smart')
       return response.SMART || []
     } catch (error) {
       throw new NetworkRailAPIError('Failed to fetch SMART data', 'SMART_ERROR', error)
@@ -229,7 +255,9 @@ export class NetworkRailClient {
    */
   async getScheduleData(trainUid: string, date: string): Promise<ScheduleMessage | null> {
     try {
-      const response = await this.makeHTTPRequest(`/api/schedule/${trainUid}/${date}`)
+      const response = await this.makeHTTPRequest<{ schedule?: ScheduleMessage }>(
+        `/api/schedule/${trainUid}/${date}`
+      )
       return response.schedule || null
     } catch (error) {
       throw new NetworkRailAPIError('Failed to fetch schedule data', 'SCHEDULE_ERROR', error)
@@ -243,25 +271,53 @@ export class NetworkRailClient {
     try {
       // This would combine data from multiple sources
       // Implementation would aggregate movements, schedule, and other data
-      const response = await this.makeHTTPRequest(`/api/train/${trainId}`)
+      const response = await this.makeHTTPRequest<unknown>(`/api/train/${trainId}`)
 
-      if (!response.train) {
+      if (!isRecord(response) || !('train' in response)) {
+        return null
+      }
+      const trainRaw = (response as { train?: unknown }).train
+      if (!isRecord(trainRaw)) {
         return null
       }
 
+      const getString = (v: unknown, fallback = ''): string => (typeof v === 'string' ? v : fallback)
+      const getNumber = (v: unknown, fallback = 0): number =>
+        typeof v === 'number' ? v : typeof v === 'string' && !Number.isNaN(Number(v)) ? Number(v) : fallback
+
+      const currentLoc = isRecord(trainRaw.current_location)
+        ? {
+            stanox: getString(trainRaw.current_location.stanox),
+            berth: getString(trainRaw.current_location.berth) || undefined,
+            platform: getString(trainRaw.current_location.platform) || undefined,
+            timestamp: getString(trainRaw.current_location.timestamp, new Date().toISOString()),
+          }
+        : undefined
+
       return {
-        trainId: response.train.train_id,
-        headcode: response.train.headcode,
-        uid: response.train.uid,
-        origin: response.train.origin,
-        destination: response.train.destination,
-        currentLocation: response.train.current_location,
-        movements: response.train.movements || [],
-        schedule: response.train.schedule,
-        delayMinutes: response.train.delay_minutes || 0,
-        variationStatus: response.train.variation_status || 'ON TIME',
-        toc: response.train.toc,
-        serviceCode: response.train.service_code,
+        trainId: getString(trainRaw.train_id, trainId),
+        headcode: getString(trainRaw.headcode),
+        uid: getString(trainRaw.uid),
+        origin: (trainRaw.origin as EnhancedTrainService['origin']) || {
+          tiploc: '',
+          scheduledTime: '',
+        },
+        destination: (trainRaw.destination as EnhancedTrainService['destination']) || {
+          tiploc: '',
+          scheduledTime: '',
+        },
+        currentLocation: currentLoc,
+        movements: Array.isArray(trainRaw.movements)
+          ? (trainRaw.movements as EnhancedTrainService['movements'])
+          : [],
+        schedule: (trainRaw.schedule as EnhancedTrainService['schedule']) || undefined,
+        delayMinutes: getNumber(trainRaw.delay_minutes, 0),
+        variationStatus: (getString(trainRaw.variation_status, 'ON TIME') as
+          | 'EARLY'
+          | 'ON TIME'
+          | 'LATE'),
+        toc: getString(trainRaw.toc),
+        serviceCode: getString(trainRaw.service_code),
         lastUpdated: new Date(),
         dataSource: 'network-rail',
       }
@@ -281,7 +337,11 @@ export class NetworkRailClient {
     const startTime = Date.now()
 
     try {
-      const response = await this.makeHTTPRequest('/api/health')
+      const response = await this.makeHTTPRequest<{
+        feeds?: { movements?: boolean; vstp?: boolean; describer?: boolean; schedule?: boolean }
+      }>(
+        '/api/health'
+      )
 
       return {
         feeds: {
@@ -293,7 +353,7 @@ export class NetworkRailClient {
         lastHealthCheck: new Date(),
         responseTime: Date.now() - startTime,
       }
-    } catch (error) {
+    } catch {
       return {
         feeds: {
           movements: false,
@@ -323,7 +383,10 @@ export class NetworkRailClient {
   /**
    * Make HTTP request to Network Rail API
    */
-  private async makeHTTPRequest(endpoint: string, options: RequestInit = {}): Promise<any> {
+  private async makeHTTPRequest<T = unknown>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
     const url = `${this.config.apiUrl}${endpoint}`
     const credentials = Buffer.from(`${this.config.username}:${this.config.password}`).toString(
       'base64'
@@ -376,7 +439,7 @@ export class NetworkRailClient {
   /**
    * Handle STOMP connection errors
    */
-  private handleSTOMPError(error: any): void {
+  private handleSTOMPError(error: unknown): void {
     console.error('Network Rail STOMP error:', error)
     this.isConnected = false
     this.attemptReconnection()

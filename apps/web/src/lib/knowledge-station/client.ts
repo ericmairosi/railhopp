@@ -51,7 +51,7 @@ export class KnowledgeStationClient {
   /**
    * Make HTTP request to Knowledge Station API
    */
-  private async makeRequest(endpoint: string, options: RequestInit = {}): Promise<any> {
+  private async makeRequest<T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> {
     if (!this.isEnabled()) {
       throw new KnowledgeStationAPIError(
         'Knowledge Station is not enabled or properly configured',
@@ -74,7 +74,7 @@ export class KnowledgeStationClient {
     const timeoutId = setTimeout(() => controller.abort(), this.config.timeout)
     requestOptions.signal = controller.signal
 
-    let lastError: any
+    let lastError: unknown
     const maxRetries = this.config.retries || 1
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -100,7 +100,7 @@ export class KnowledgeStationClient {
           )
         }
 
-        return await response.json()
+        return (await response.json()) as T
       } catch (error) {
         lastError = error
 
@@ -141,7 +141,7 @@ export class KnowledgeStationClient {
     }
 
     try {
-      const response = await this.makeRequest(
+      const response = await this.makeRequest<KnowledgeStationStation>(
         `/station/${request.crs.toUpperCase()}?${queryParams}`
       )
       return this.transformStationInfo(response)
@@ -179,7 +179,7 @@ export class KnowledgeStationClient {
     }
 
     try {
-      const response = await this.makeRequest(`${endpoint}?${queryParams}`)
+      const response = await this.makeRequest<KnowledgeStationService>(`${endpoint}?${queryParams}`)
       return this.transformServiceTracking(response)
     } catch (error) {
       if (error instanceof KnowledgeStationAPIError) throw error
@@ -205,10 +205,11 @@ export class KnowledgeStationClient {
     if (request.limit) queryParams.append('limit', request.limit.toString())
 
     try {
-      const response = await this.makeRequest(`/disruptions?${queryParams}`)
-      return (response.disruptions || response || []).map(
-        (disruption: KnowledgeStationDisruption) => this.transformDisruption(disruption)
-      )
+      const response = await this.makeRequest<{ disruptions?: KnowledgeStationDisruption[] } | KnowledgeStationDisruption[]>(`/disruptions?${queryParams}`)
+      const list: KnowledgeStationDisruption[] = Array.isArray(response)
+        ? response
+        : response?.disruptions || []
+      return list.map((disruption) => this.transformDisruption(disruption))
     } catch (error) {
       if (error instanceof KnowledgeStationAPIError) throw error
 
@@ -241,18 +242,20 @@ export class KnowledgeStationClient {
 
     // Assume upstream endpoint shape; adjust as needed to your KS API
     const queryParams = new URLSearchParams({ q, limit: String(limit) })
-    const response = await this.makeRequest(`/stations/search?${queryParams.toString()}`)
+    const response = await this.makeRequest<{ stations?: Array<{ crs?: string; code?: string; name?: string; region?: string }> } | Array<{ crs?: string; code?: string; name?: string; region?: string }>>(`/stations/search?${queryParams.toString()}`)
 
-    // Expected upstream: { stations: [{ crs: string, name: string, region?: string }] }
-    const items: any[] = response?.stations || response || []
+    const items: Array<{ crs?: string; code?: string; name?: string; region?: string }> = Array.isArray(response)
+      ? response
+      : response?.stations || []
+
     return items
       .filter(Boolean)
-      .map((s: any) => ({
+      .map((s) => ({
         code: s.crs || s.code || '',
         name: s.name || '',
         region: s.region,
       }))
-      .filter((s: StationSummary) => s.code && s.name)
+      .filter((s: StationSummary) => s.code !== '' && s.name !== '')
   }
 
   /**

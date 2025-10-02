@@ -30,7 +30,7 @@ class RealtimeCacheMemory {
     this.broadcast({ type: 'service_update', data: merged })
   }
 
-  snapshot(limit = 100): ServiceUpdate[] {
+  async snapshot(limit = 100): Promise<ServiceUpdate[]> {
     const arr = Array.from(this.updates.values())
     arr.sort((a, b) => (a.lastUpdated > b.lastUpdated ? -1 : 1))
     return arr.slice(0, limit)
@@ -49,24 +49,25 @@ class RealtimeCacheMemory {
 }
 
 // ---------------- Redis implementation ----------------
-let Redis: any
+import type IORedis from 'ioredis'
+let RedisCtor: typeof IORedis | null = null
 try {
   // Lazy import to avoid bundling when not used
-   
-  Redis = require('ioredis')
+  RedisCtor = (await import('ioredis')).default as unknown as typeof IORedis
 } catch {}
 
 class RealtimeCacheRedis {
-  private pub: any
-  private sub: any
+  private pub: IORedis
+  private sub: IORedis
   private channel = 'realtime:service_update'
   private recentKey = 'realtime:recent'
   private subscribers = new Set<Subscriber>()
-  private boundHandler: any
+  private boundHandler: (channel: string, message: string) => void
 
   constructor(private url: string) {
-    this.pub = new Redis(this.url)
-    this.sub = new Redis(this.url)
+    if (!RedisCtor) throw new Error('ioredis not available')
+    this.pub = new RedisCtor(this.url)
+    this.sub = new RedisCtor(this.url)
     this.boundHandler = (channel: string, message: string) => {
       if (channel !== this.channel) return
       try {
@@ -112,11 +113,12 @@ class RealtimeCacheRedis {
 }
 
 // ---------------- Factory ----------------
-let singleton: any = null
-export function getRealtimeCache() {
+type CacheInstance = RealtimeCacheMemory | RealtimeCacheRedis
+let singleton: CacheInstance | null = null
+export async function getRealtimeCache(): Promise<CacheInstance> {
   if (singleton) return singleton
   const redisUrl = process.env.REALTIME_REDIS_URL || process.env.REDIS_URL
-  if (redisUrl && Redis) {
+  if (redisUrl && RedisCtor) {
     singleton = new RealtimeCacheRedis(redisUrl)
   } else {
     singleton = new RealtimeCacheMemory()

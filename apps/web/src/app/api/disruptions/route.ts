@@ -302,14 +302,17 @@ async function fetchKnowledgeStationDisruptions(): Promise<DisruptionSource[]> {
 
           // Analyze services for disruptions
           if (stationData.services && Array.isArray(stationData.services)) {
-            const problematicServices = stationData.services.filter((service: any) => {
+            const problematicServices = stationData.services.filter((service: unknown) => {
+              const s = (service || {}) as Record<string, unknown>
               // Check for cancellations
-              if (service.isCancelled) return true
+              if (s.isCancelled === true) return true
 
               // Check for significant delays (more than 10 minutes)
-              if (service.gbttBookedDeparture && service.realtimeDeparture) {
-                const scheduled = new Date(`2024-01-01T${service.gbttBookedDeparture}:00`)
-                const actual = new Date(`2024-01-01T${service.realtimeDeparture}:00`)
+              const booked = typeof s.gbttBookedDeparture === 'string' ? s.gbttBookedDeparture : undefined
+              const realtime = typeof s.realtimeDeparture === 'string' ? s.realtimeDeparture : undefined
+              if (booked && realtime) {
+                const scheduled = new Date(`2024-01-01T${booked}:00`)
+                const actual = new Date(`2024-01-01T${realtime}:00`)
                 const delayMinutes = (actual.getTime() - scheduled.getTime()) / (1000 * 60)
                 if (delayMinutes > 10) return true
               }
@@ -319,7 +322,7 @@ async function fetchKnowledgeStationDisruptions(): Promise<DisruptionSource[]> {
 
             // If multiple services are affected, consider it a disruption
             if (problematicServices.length >= 2) {
-              const cancelledCount = problematicServices.filter((s: any) => s.isCancelled).length
+              const cancelledCount = problematicServices.filter((svc: unknown) => (svc as Record<string, unknown>).isCancelled === true).length
               const severity =
                 cancelledCount > 2 ? 'high' : problematicServices.length > 4 ? 'medium' : 'low'
 
@@ -332,13 +335,25 @@ async function fetchKnowledgeStationDisruptions(): Promise<DisruptionSource[]> {
                 affectedRoutes: [
                   ...new Set(
                     problematicServices
-                      .map((s: any) => s.locationDetail?.destination?.[0]?.description)
-                      .filter(Boolean)
+                      .map((svc: unknown) => {
+                        const sd = (svc as Record<string, unknown>).locationDetail as Record<string, unknown> | undefined
+                        const destArr = (sd?.destination as unknown[]) || []
+                        const first = (destArr[0] || {}) as Record<string, unknown>
+                        return typeof first.description === 'string' ? first.description : undefined
+                      })
+                      .filter(Boolean) as string[]
                   ),
-                ] as string[],
+                ],
                 affectedOperators: [
-                  ...new Set(problematicServices.map((s: any) => s.atocName).filter(Boolean)),
-                ] as string[],
+                  ...new Set(
+                    problematicServices
+                      .map((svc: unknown) => {
+                        const name = (svc as Record<string, unknown>).atocName
+                        return typeof name === 'string' ? name : undefined
+                      })
+                      .filter(Boolean) as string[]
+                  ),
+                ],
                 startTime: new Date().toISOString(),
                 lastUpdated: new Date().toISOString(),
                 source: 'knowledge-station' as const,

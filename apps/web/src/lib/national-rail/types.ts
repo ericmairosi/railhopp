@@ -118,7 +118,7 @@ export class NationalRailAPIError extends Error {
   constructor(
     message: string,
     public code: string,
-    public details?: any
+    public details?: unknown
   ) {
     super(message)
     this.name = 'NationalRailAPIError'
@@ -132,7 +132,7 @@ export interface NationalRailResponse<T> {
   error?: {
     code: string
     message: string
-    details?: any
+    details?: unknown
   }
   metadata: {
     timestamp: string

@@ -60,7 +60,7 @@ export class NationalRailClient {
         options.operators.forEach((op) => queryParams.append('operators', op))
       }
 
-      const response = await this.makeRequest(`/disruptions?${queryParams.toString()}`)
+      const response = await this.makeRequest<{ disruptions?: unknown[] }>(`/disruptions?${queryParams.toString()}`)
 
       return this.transformDisruptions(response.data?.disruptions || [])
     } catch (error) {
@@ -80,8 +80,24 @@ export class NationalRailClient {
     startDate: string,
     endDate: string
   ): Promise<ServicePerformanceMetrics | null> {
+    type PerformanceEnvelope = {
+      performance?: {
+        operator_code: string
+        operator_name: string
+        period: { start_date: string; end_date: string }
+        metrics: {
+          punctuality: number
+          reliability: number
+          customer_satisfaction?: number
+          total_services: number
+          on_time_services: number
+          cancelled_services: number
+          delayed_services: number
+        }
+      }
+    }
     try {
-      const response = await this.makeRequest(
+      const response = await this.makeRequest<PerformanceEnvelope>(
         `/performance/${operatorCode}?start=${startDate}&end=${endDate}`
       )
 
@@ -122,7 +138,7 @@ export class NationalRailClient {
    */
   async getStationFacilities(crs: string): Promise<NationalRailStationFacilities | null> {
     try {
-      const response = await this.makeRequest(`/stations/${crs.toUpperCase()}/facilities`)
+      const response = await this.makeRequest<{ station?: unknown }>(`/stations/${crs.toUpperCase()}/facilities`)
 
       if (!response.data?.station) {
         return null
@@ -155,18 +171,39 @@ export class NationalRailClient {
       if (options.to) queryParams.append('to', options.to)
       if (options.effectiveFrom) queryParams.append('effective_from', options.effectiveFrom)
 
-      const response = await this.makeRequest(`/timetable/changes?${queryParams.toString()}`)
+      const response = await this.makeRequest<{ changes?: unknown[] }>(`/timetable/changes?${queryParams.toString()}`)
 
-      return (response.data?.changes || []).map((change: any) => ({
-        changeId: change.change_id,
-        title: change.title,
-        description: change.description,
-        effectiveFrom: change.effective_from,
-        effectiveTo: change.effective_to,
-        changeType: change.change_type,
-        affectedServices: change.affected_services,
-        publishedDate: change.published_date,
-      }))
+      const mapChangeType = (v: unknown): TimetableChange['changeType'] => {
+        const s = String(v ?? '')
+        if (s === 'New Service') return 'New Service'
+        if (s === 'Service Withdrawal') return 'Service Withdrawal'
+        if (s === 'Timing Change') return 'Timing Change'
+        if (s === 'Route Change') return 'Route Change'
+        return 'Timing Change'
+      }
+
+      return (response.data?.changes || []).map((changeUnknown) => {
+        const change = (changeUnknown || {}) as Record<string, unknown>
+        return {
+          changeId: String(change.change_id ?? ''),
+          title: String(change.title ?? ''),
+          description: String(change.description ?? ''),
+          effectiveFrom: String(change.effective_from ?? ''),
+          effectiveTo: change.effective_to ? String(change.effective_to) : undefined,
+          changeType: mapChangeType(change.change_type),
+          affectedServices: Array.isArray(change.affected_services)
+            ? (change.affected_services as unknown[]).map((svc) => {
+                const s = (svc || {}) as Record<string, unknown>
+                return {
+                  operatorCode: String(s.operator_code ?? ''),
+                  serviceNumber: s.service_number ? String(s.service_number) : undefined,
+                  routeDescription: String(s.route_description ?? ''),
+                }
+              })
+            : [],
+          publishedDate: String(change.published_date ?? ''),
+        }
+      }) as TimetableChange[]
     } catch (error) {
       throw new NationalRailAPIError(
         'Failed to fetch timetable changes',
@@ -183,10 +220,19 @@ export class NationalRailClient {
     const startTime = Date.now()
 
     try {
-      const response = await this.makeRequest('/health')
+      type HealthPayload = {
+        limits?: { hourly_limit: number; remaining: number; reset_time: string }
+        services?: {
+          disruptions?: boolean
+          facilities?: boolean
+          performance?: boolean
+          timetables?: boolean
+        }
+      }
+      const response = await this.makeRequest<HealthPayload>('/health')
 
       return {
-        available: response.success,
+        available: Boolean(response.success),
         lastHealthCheck: new Date(),
         responseTime: Date.now() - startTime,
         apiLimits: {
@@ -195,10 +241,10 @@ export class NationalRailClient {
           resetTime: new Date(response.data?.limits?.reset_time || Date.now() + 3600000),
         },
         services: {
-          disruptions: response.data?.services?.disruptions || false,
-          facilities: response.data?.services?.facilities || false,
-          performance: response.data?.services?.performance || false,
-          timetables: response.data?.services?.timetables || false,
+          disruptions: Boolean(response.data?.services?.disruptions),
+          facilities: Boolean(response.data?.services?.facilities),
+          performance: Boolean(response.data?.services?.performance),
+          timetables: Boolean(response.data?.services?.timetables),
         },
       }
     } catch (error) {
@@ -237,10 +283,10 @@ export class NationalRailClient {
   /**
    * Make HTTP request to National Rail API
    */
-  private async makeRequest(
+  private async makeRequest<T = unknown>(
     endpoint: string,
     options: RequestInit = {}
-  ): Promise<NationalRailResponse<any>> {
+  ): Promise<NationalRailResponse<T>> {
     if (!this.isEnabled()) {
       throw new NationalRailAPIError(
         'National Rail API is not enabled or properly configured',
@@ -262,7 +308,7 @@ export class NationalRailClient {
     const timeoutId = setTimeout(() => controller.abort(), this.config.timeout)
     requestOptions.signal = controller.signal
 
-    let lastError: any
+    let lastError: unknown
     const maxRetries = this.config.retries || 1
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -279,7 +325,7 @@ export class NationalRailClient {
           )
         }
 
-        const data = await response.json()
+        const data = (await response.json()) as T
         return {
           success: true,
           data,
@@ -318,74 +364,90 @@ export class NationalRailClient {
   /**
    * Transform raw disruption data to our format
    */
-  private transformDisruptions(rawDisruptions: any[]): NationalRailDisruption[] {
-    return rawDisruptions.map((disruption) => ({
-      incidentNumber: disruption.incident_number,
-      incidentTitle: disruption.incident_title,
-      incidentSummary: disruption.incident_summary,
-      incidentDescription: disruption.incident_description,
-      incidentStatus: disruption.incident_status,
-      incidentType: disruption.incident_type,
-      severity: disruption.severity,
-      startTime: disruption.start_time,
-      endTime: disruption.end_time,
-      lastUpdated: disruption.last_updated,
-      affectedOperators: disruption.affected_operators || [],
-      affectedRoutes: (disruption.affected_routes || []).map((route: any) => ({
-        routeName: route.route_name,
-        fromStation: {
-          name: route.from_station.name,
-          crs: route.from_station.crs,
-        },
-        toStation: {
-          name: route.to_station.name,
-          crs: route.to_station.crs,
-        },
-        direction: route.direction,
-      })),
-      alternativeTransport: disruption.alternative_transport,
-      passengerAdvice: disruption.passenger_advice,
-      url: disruption.url,
-    }))
+  private transformDisruptions(rawDisruptions: unknown[]): NationalRailDisruption[] {
+    return rawDisruptions.map((discUnknown) => {
+      const d = (discUnknown || {}) as Record<string, unknown>
+      const routes = Array.isArray(d.affected_routes) ? (d.affected_routes as unknown[]) : []
+      return {
+        incidentNumber: String(d.incident_number ?? ''),
+        incidentTitle: String(d.incident_title ?? ''),
+        incidentSummary: String(d.incident_summary ?? ''),
+        incidentDescription: String(d.incident_description ?? ''),
+        incidentStatus: String(d.incident_status ?? '' as any) as NationalRailDisruption['incidentStatus'],
+        incidentType: String(d.incident_type ?? '' as any) as NationalRailDisruption['incidentType'],
+        severity: String(d.severity ?? '' as any) as NationalRailDisruption['severity'],
+        startTime: String(d.start_time ?? ''),
+        endTime: d.end_time ? String(d.end_time) : undefined,
+        lastUpdated: String(d.last_updated ?? ''),
+        affectedOperators: Array.isArray(d.affected_operators)
+          ? (d.affected_operators as unknown[]).map((x) => String(x)).filter(Boolean)
+          : [],
+        affectedRoutes: routes.map((routeUnknown) => {
+          const r = (routeUnknown || {}) as Record<string, unknown>
+          const from = (r.from_station || {}) as Record<string, unknown>
+          const to = (r.to_station || {}) as Record<string, unknown>
+          return {
+            routeName: String(r.route_name ?? ''),
+            fromStation: {
+              name: String(from.name ?? ''),
+              crs: String(from.crs ?? ''),
+            },
+            toStation: {
+              name: String(to.name ?? ''),
+              crs: String(to.crs ?? ''),
+            },
+            direction: (r.direction as any) as 'Both' | 'Inbound' | 'Outbound' | undefined,
+          }
+        }),
+        alternativeTransport: d.alternative_transport ? String(d.alternative_transport) : undefined,
+        passengerAdvice: String(d.passenger_advice ?? ''),
+        url: d.url ? String(d.url) : undefined,
+      }
+    })
   }
 
   /**
    * Transform station facilities data to our format
    */
-  private transformStationFacilities(rawData: any): NationalRailStationFacilities {
+  private transformStationFacilities(rawDataUnknown: unknown): NationalRailStationFacilities {
+    const rawData = (rawDataUnknown || {}) as Record<string, unknown>
+    const facilities = (rawData.facilities || {}) as Record<string, unknown>
+    const accessibility = (rawData.accessibility || {}) as Record<string, unknown>
+    const staffing = (rawData.staffing || {}) as Record<string, unknown>
+
     return {
-      crs: rawData.crs,
-      stationName: rawData.station_name,
+      crs: String(rawData.crs ?? ''),
+      stationName: String(rawData.station_name ?? ''),
       facilities: {
-        ticketOffice: rawData.facilities?.ticket_office || false,
-        waitingRoom: rawData.facilities?.waiting_room || false,
-        toilets: rawData.facilities?.toilets || false,
-        disabledToilets: rawData.facilities?.disabled_toilets || false,
-        babyChanging: rawData.facilities?.baby_changing || false,
-        wifi: rawData.facilities?.wifi || false,
-        refreshments: rawData.facilities?.refreshments || false,
-        parking: rawData.facilities?.parking || false,
-        carPark: rawData.facilities?.car_park || false,
-        bicycleStorage: rawData.facilities?.bicycle_storage || false,
-        taxiRank: rawData.facilities?.taxi_rank || false,
-        busStop: rawData.facilities?.bus_stop || false,
-        helpPoint: rawData.facilities?.help_point || false,
-        payphone: rawData.facilities?.payphone || false,
-        postBox: rawData.facilities?.post_box || false,
-        cashMachine: rawData.facilities?.cash_machine || false,
+        ticketOffice: Boolean(facilities.ticket_office),
+        waitingRoom: Boolean(facilities.waiting_room),
+        toilets: Boolean(facilities.toilets),
+        disabledToilets: Boolean(facilities.disabled_toilets),
+        babyChanging: Boolean(facilities.baby_changing),
+        wifi: Boolean(facilities.wifi),
+        refreshments: Boolean(facilities.refreshments),
+        parking: Boolean(facilities.parking),
+        carPark: Boolean(facilities.car_park),
+        bicycleStorage: Boolean(facilities.bicycle_storage),
+        taxiRank: Boolean(facilities.taxi_rank),
+        busStop: Boolean(facilities.bus_stop),
+        helpPoint: Boolean(facilities.help_point),
+        payphone: Boolean(facilities.payphone),
+        postBox: Boolean(facilities.post_box),
+        cashMachine: Boolean(facilities.cash_machine),
       },
       accessibility: {
-        stepFreeAccess: rawData.accessibility?.step_free_access || false,
-        wheelchairAccessible: rawData.accessibility?.wheelchair_accessible || false,
-        assistedBoardingAvailable: rawData.accessibility?.assisted_boarding_available || false,
-        inductionLoop: rawData.accessibility?.induction_loop || false,
-        largePrintTimetables: rawData.accessibility?.large_print_timetables || false,
+        stepFreeAccess: Boolean(accessibility.step_free_access),
+        wheelchairAccessible: Boolean(accessibility.wheelchair_accessible),
+        assistedBoardingAvailable: Boolean(accessibility.assisted_boarding_available),
+        inductionLoop: Boolean(accessibility.induction_loop),
+        largePrintTimetables: Boolean(accessibility.large_print_timetables),
       },
       staffing: {
-        staffed: rawData.staffing?.staffed || false,
-        staffingHours: rawData.staffing?.staffing_hours,
+        staffed: Boolean(staffing.staffed),
+        staffingHours: staffing.staffing_hours ? String(staffing.staffing_hours) : undefined,
       },
-      lastUpdated: rawData.last_updated || new Date().toISOString(),
+      lastUpdated: String(rawData.last_updated ?? new Date().toISOString()),
     }
   }
 }

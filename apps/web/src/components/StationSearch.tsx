@@ -73,28 +73,47 @@ export default function StationSearch({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!showSuggestions) return
+    // Allow keyboard nav when suggestions open
+    if (showSuggestions) {
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault()
+          setSelectedIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0))
+          return
+        case 'ArrowUp':
+          e.preventDefault()
+          setSelectedIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1))
+          return
+        case 'Enter':
+          e.preventDefault()
+          if (selectedIndex >= 0) {
+            handleSelectStation(suggestions[selectedIndex])
+            return
+          }
+          break
+        case 'Escape':
+          setShowSuggestions(false)
+          setSelectedIndex(-1)
+          inputRef.current?.blur()
+          return
+      }
+    }
 
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault()
-        setSelectedIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0))
-        break
-      case 'ArrowUp':
-        e.preventDefault()
-        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1))
-        break
-      case 'Enter':
-        e.preventDefault()
-        if (selectedIndex >= 0) {
-          handleSelectStation(suggestions[selectedIndex])
+    // Enter-to-select when input is exactly a CRS code (3 letters)
+    if (e.key === 'Enter') {
+      const code = searchTerm.trim().toUpperCase()
+      if (/^[A-Z]{3}$/.test(code)) {
+        const match = suggestions.find((s) => s.code.toUpperCase() === code)
+        if (match) {
+          handleSelectStation(match)
+        } else {
+          // Fallback: minimal station object when suggestion list hasn't loaded
+          onSelect({ code, name: code })
+          setSearchTerm(`${code}`)
+          setShowSuggestions(false)
+          setSelectedIndex(-1)
         }
-        break
-      case 'Escape':
-        setShowSuggestions(false)
-        setSelectedIndex(-1)
-        inputRef.current?.blur()
-        break
+      }
     }
   }
 

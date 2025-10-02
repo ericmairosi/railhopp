@@ -11,13 +11,24 @@ import {
   TrainServiceDetails,
   DarwinAPIError,
   StationBoardRequest,
+  DarwinLocation,
 } from './types'
 import { XMLParser } from 'fast-xml-parser'
+
+type BrokerEvent = { body?: Record<string, unknown> } | Record<string, unknown>
+
+type CachedService = {
+  serviceId: string
+  uid: string
+  runDate: string
+  locations: DarwinLocation[]
+  lastUpdate: string
+}
 
 export class DarwinPubSubClient {
   private config: DarwinConfig
   private parser: XMLParser
-  private trainDataCache: Map<string, any> = new Map()
+  private trainDataCache: Map<string, CachedService> = new Map()
   private lastUpdateTime: number = 0
 
   constructor(config: DarwinConfig) {
@@ -31,7 +42,7 @@ export class DarwinPubSubClient {
     this.parser = new XMLParser({
       ignoreAttributes: false,
       attributeNamePrefix: '@_',
-      isArray: (name, jpath) => {
+      isArray: (name) => {
         const arrayElements = ['TS', 'Location', 'service', 'callingPoint']
         return arrayElements.includes(name)
       },
@@ -42,12 +53,18 @@ export class DarwinPubSubClient {
    * Check if Darwin Pub/Sub is enabled and configured
    */
   isEnabled(): boolean {
+    const brokerUrl = process.env.DARWIN_BROKER_URL
     return Boolean(
       this.config.enabled &&
-        this.config.queueUrl &&
-        this.config.username &&
-        this.config.password &&
-        this.config.username !== 'your_darwin_username'
+      (
+        brokerUrl ||
+        (
+          this.config.queueUrl &&
+          this.config.username &&
+          this.config.password &&
+          this.config.username !== 'your_darwin_username'
+        )
+      )
     )
   }
 
@@ -178,8 +195,8 @@ export class DarwinPubSubClient {
         )
       }
 
-      const json = await res.json()
-      const items: any[] = Array.isArray(json?.data) ? json.data : []
+      const json = (await res.json()) as { data?: unknown }
+      const items: BrokerEvent[] = Array.isArray(json?.data) ? (json.data as BrokerEvent[]) : []
 
       const departures: LiveDeparture[] = this.mapBrokerEventsToDepartures(
         items,
@@ -194,7 +211,7 @@ export class DarwinPubSubClient {
         departures,
         generatedAt: new Date().toISOString(),
       }
-    } catch (err) {
+    } catch {
       // If broker is not reachable, surface informative error
       throw new DarwinAPIError(
         'Darwin Pub/Sub requires a backend service to maintain JMS connection',
@@ -210,25 +227,31 @@ export class DarwinPubSubClient {
   }
 
   // Best-effort mapping from broker events to LiveDeparture list
-  private mapBrokerEventsToDepartures(items: any[], limit: number): LiveDeparture[] {
+  private mapBrokerEventsToDepartures(items: BrokerEvent[], limit: number): LiveDeparture[] {
     const out: LiveDeparture[] = []
     for (const ev of items) {
-      const body = ev?.body || ev
-      // Try common shapes conservatively
-      const destName =
-        body?.destination_name ||
-        body?.dest_name ||
-        body?.dest ||
-        body?.destination ||
+      const body = (('body' in ev && ev.body) ? ev.body : ev) as Record<string, unknown>
+
+      const getStr = (keys: string[], fallback = ''): string => {
+        for (const k of keys) {
+          const v = body[k]
+          if (typeof v === 'string' && v.trim().length > 0) return v
+        }
+        return fallback
+      }
+
+      const destName = getStr(
+        ['destination_name', 'dest_name', 'dest', 'destination'],
         'Unknown destination'
-      const destCrs = body?.destination_crs || body?.dest_crs || body?.destCRS || '---'
-      const std = body?.std || body?.dep_time || body?.planned_dep || body?.ptd || body?.time || ''
-      const etd = body?.etd || body?.expected_dep || body?.atd || body?.actual_dep || 'On time'
-      const operator = body?.toc_name || body?.operator || 'Unknown'
-      const operatorCode = body?.toc || body?.operatorCode || ''
-      const serviceID = String(
-        body?.serviceId || body?.rid || body?.train_id || `${Date.now()}_${out.length}`
       )
+      const destCrs = getStr(['destination_crs', 'dest_crs', 'destCRS'], '---')
+      const std = getStr(['std', 'dep_time', 'planned_dep', 'ptd', 'time'], '')
+      const etd = getStr(['etd', 'expected_dep', 'atd', 'actual_dep'], 'On time')
+      const operator = getStr(['toc_name', 'operator'], 'Unknown')
+      const operatorCode = getStr(['toc', 'operatorCode'], '')
+      const idRaw = getStr(['serviceId', 'rid', 'train_id'], '')
+      const serviceID = idRaw || `${Date.now()}_${out.length}`
+      const platform = getStr(['plat', 'platform'], '') || undefined
 
       out.push({
         serviceID,
@@ -238,7 +261,7 @@ export class DarwinPubSubClient {
         destinationCRS: destCrs,
         std,
         etd,
-        platform: body?.plat || body?.platform,
+        platform,
         serviceType: 'train',
       })
 
@@ -294,7 +317,7 @@ export class DarwinPubSubClient {
   /**
    * Parse service details from cached data
    */
-  private parseServiceDetailsFromCache(cachedService: any): TrainServiceDetails {
+  private parseServiceDetailsFromCache(cachedService: CachedService): TrainServiceDetails {
     return {
       serviceID: cachedService.serviceId,
       rsid: cachedService.uid,

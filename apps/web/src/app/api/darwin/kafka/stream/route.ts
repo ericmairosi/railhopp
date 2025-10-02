@@ -31,7 +31,7 @@ export async function GET(_req: NextRequest) {
 
   // Ensure Kafka client is running and hooked into realtime cache
   const kafka = getDarwinKafkaClient()
-  const cache = getRealtimeCache()
+  const cache = await getRealtimeCache()
 
   if (kafka.isEnabled()) {
     // Attach parser once (idempotent behavior if multiple streams attach)
@@ -53,7 +53,7 @@ export async function GET(_req: NextRequest) {
 
   // Initial handshake + snapshot
   comment('connected')
-  const snapshot = cache.snapshot(50)
+  const snapshot = await cache.snapshot(50)
   if (snapshot.length) send('bootstrap', snapshot)
 
   // Heartbeats for proxies
@@ -67,7 +67,8 @@ export async function GET(_req: NextRequest) {
   const response = new Response(stream, { headers })
 
   // When the client disconnects, clear interval + unsubscribe.
-  ;(response as any).socket?.on('close', () => {
+  const respWithSocket = response as unknown as { socket?: { on: (event: 'close', cb: () => void) => void } }
+  respWithSocket.socket?.on('close', () => {
     clearInterval(hb)
     unsubscribe()
     close()

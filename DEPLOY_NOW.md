@@ -35,10 +35,10 @@ git push -u origin main
    ```
 5. **Environment variables** (add in Netlify dashboard):
    ```bash
-   NEXT_PUBLIC_WEBSOCKET_URL=https://railhopp-websocket.onrender.com
-   DARWIN_API_KEY=P-d3bf124c-1058-4040-8a62-87181a877d59
-   NETWORK_RAIL_USERNAME=ericmairosi@gmail.com
-   NETWORK_RAIL_PASSWORD=Kirsty77!
+   NEXT_PUBLIC_WEBSOCKET_URL={{WEBSOCKET_URL}}
+   DARWIN_API_KEY={{DARWIN_API_KEY}}
+   NETWORK_RAIL_USERNAME={{NETWORK_RAIL_USERNAME}}
+   NETWORK_RAIL_PASSWORD={{NETWORK_RAIL_PASSWORD}}
    NODE_ENV=production
    ```
 
@@ -58,8 +58,8 @@ git push -u origin main
    ```
 5. **Environment variables** (add in Render dashboard):
    ```bash
-   NETWORK_RAIL_USERNAME=ericmairosi@gmail.com
-   NETWORK_RAIL_PASSWORD=Kirsty77!
+   NETWORK_RAIL_USERNAME={{NETWORK_RAIL_USERNAME}}
+   NETWORK_RAIL_PASSWORD={{NETWORK_RAIL_PASSWORD}}
    NODE_ENV=production
    PORT=10000
    ```
@@ -182,10 +182,10 @@ Once live, users will experience:
 
 ### **If No Real Data:**
 
-1. Expected behavior - fallback to simulation
-2. Real Network Rail data likely works in production
-3. Mock data is realistic and fully functional
-4. Users won't notice the difference
+1. The API will return a clear error (no mock fallback is used)
+2. Verify Darwin broker availability and credentials
+3. Check environment variables are set correctly on your platform
+4. Use the health endpoints to diagnose issues
 
 ---
 

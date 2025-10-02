@@ -10,7 +10,7 @@
 - **Data**: Live departures, arrivals, delays, cancellations
 - **Cost**: Free
 - **Registration**: https://www.nationalrail.co.uk/100296.aspx
-- **Status**: ✅ Already integrated
+- **Status**: ✅ Integrated via Pub/Sub broker
 
 #### 2. RTT.io (Real Time Trains)
 

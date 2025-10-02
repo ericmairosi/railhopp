@@ -1,14 +1,14 @@
 // Simple in-memory cache for API responses
-interface CacheItem {
-  data: any
+interface CacheItem<T> {
+  data: T
   timestamp: number
   ttl: number
 }
 
 class MemoryCache {
-  private cache = new Map<string, CacheItem>()
+  private cache = new Map<string, CacheItem<unknown>>()
 
-  set(key: string, data: any, ttlSeconds: number = 60): void {
+  set<T>(key: string, data: T, ttlSeconds: number = 60): void {
     this.cache.set(key, {
       data,
       timestamp: Date.now(),
@@ -16,7 +16,7 @@ class MemoryCache {
     })
   }
 
-  get(key: string): any | null {
+  get<T = unknown>(key: string): T | null {
     const item = this.cache.get(key)
 
     if (!item) {
@@ -29,7 +29,7 @@ class MemoryCache {
       return null
     }
 
-    return item.data
+    return item.data as T
   }
 
   delete(key: string): boolean {

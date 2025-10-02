@@ -102,8 +102,9 @@ export async function GET(request: NextRequest) {
       },
     }
 
-    // Cache the successful response for 30 seconds
-    apiCache.set(cacheKey, responseData, 30)
+    // Cache the successful response, TTL configurable via env
+    const ttl = parseInt(process.env.DARWIN_DEPARTURES_CACHE_TTL_SECONDS || '30', 10)
+    apiCache.set(cacheKey, responseData, isNaN(ttl) ? 30 : ttl)
 
     return NextResponse.json(responseData)
   } catch (error) {

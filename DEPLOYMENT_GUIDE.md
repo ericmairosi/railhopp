@@ -1,6 +1,6 @@
 # 🚀 Railhopp Production Deployment Guide
 
-This guide walks you through deploying Railhopp to production with full real-time capabilities.
+This guide walks you through deploying Railhopp to production with full real-time capabilities. Fly.io is the canonical deployment path for production. Alternative options (e.g., Vercel for web with a separate broker host) are noted, but avoid committing secrets and always use platform secrets.
 
 ## 📋 Prerequisites
 
@@ -82,9 +82,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
 # Rail APIs
-DARWIN_API_KEY=P-d3bf124c-1058-4040-8a62-87181a877d59
-NETWORK_RAIL_USERNAME=ericmairosi@gmail.com
-NETWORK_RAIL_PASSWORD=Kirsty77!
+DARWIN_API_KEY={{DARWIN_API_KEY}}
+NETWORK_RAIL_USERNAME={{NETWORK_RAIL_USERNAME}}
+NETWORK_RAIL_PASSWORD={{NETWORK_RAIL_PASSWORD}}
 NETWORK_RAIL_ENABLED=true
 
 # WebSocket (will be set after Step 3)

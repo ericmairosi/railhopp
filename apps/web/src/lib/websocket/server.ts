@@ -1,7 +1,7 @@
 // WebSocket Server for Real-time Train Updates
 // Provides live updates to connected clients
 
-import { WebSocketServer } from 'ws'
+import { WebSocketServer, WebSocket as WS } from 'ws'
 import http from 'http'
 
 export interface TrainUpdateMessage {
@@ -18,9 +18,16 @@ export interface TrainUpdateMessage {
   }
 }
 
+type ClientMessage =
+  | { type: 'SUBSCRIBE_STATION'; stationCrs?: string }
+  | { type: 'UNSUBSCRIBE_STATION'; stationCrs?: string }
+  | { type: 'PING' }
+  | { type: string; [key: string]: unknown }
+
 class WebSocketManager {
-  private wss: any | null = null
-  private clients = new Set<any>()
+  private wss: WebSocketServer | null = null
+  private clients = new Set<WS>()
+  private readonly subscriptions = new WeakMap<WS, Set<string>>()
   private isRunning = false
 
   /**
@@ -43,7 +50,7 @@ class WebSocketManager {
         console.log(`✅ WebSocket server started on port ${port}`)
       }
 
-      this.wss.on('connection', (ws: any, req: any) => {
+      this.wss.on('connection', (ws: WS) => {
         const clientId = `client-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
         console.log(`🔌 WebSocket client connected: ${clientId}`)
 
@@ -61,10 +68,11 @@ class WebSocketManager {
         )
 
         // Handle client messages
-        ws.on('message', (message: any) => {
+        ws.on('message', (message: unknown) => {
           try {
-            const data = JSON.parse(message.toString())
-            this.handleClientMessage(ws, data)
+            const text = typeof message === 'string' ? message : (message as { toString: () => string }).toString()
+            const parsed = JSON.parse(text) as { type?: string; stationCrs?: unknown }
+            this.handleClientMessage(ws, parsed as ClientMessage)
           } catch (error) {
             console.error('Error parsing client message:', error)
           }
@@ -77,7 +85,7 @@ class WebSocketManager {
         })
 
         // Handle errors
-        ws.on('error', (error: any) => {
+        ws.on('error', (error: unknown) => {
           console.error(`WebSocket error for ${clientId}:`, error)
           this.clients.delete(ws)
         })
@@ -101,7 +109,7 @@ class WebSocketManager {
 
     // Close all client connections
     this.clients.forEach((client) => {
-      if (client.readyState === client.OPEN) {
+      if (client.readyState === (client as unknown as { OPEN: number }).OPEN) {
         client.close()
       }
     })
@@ -124,10 +132,10 @@ class WebSocketManager {
     if (!this.isRunning) return
 
     const messageStr = JSON.stringify(message)
-    const activeClients = new Set<any>()
+    const activeClients = new Set<WS>()
 
     this.clients.forEach((client) => {
-      if (client.readyState === client.OPEN) {
+      if (client.readyState === (client as unknown as { OPEN: number }).OPEN) {
         try {
           client.send(messageStr)
           activeClients.add(client)
@@ -144,8 +152,8 @@ class WebSocketManager {
   /**
    * Send message to specific client
    */
-  sendToClient(client: any, message: TrainUpdateMessage): void {
-    if (client.readyState === client.OPEN) {
+  sendToClient(client: WS, message: TrainUpdateMessage): void {
+    if (client.readyState === (client as unknown as { OPEN: number }).OPEN) {
       try {
         client.send(JSON.stringify(message))
       } catch (error) {
@@ -157,24 +165,26 @@ class WebSocketManager {
   /**
    * Handle incoming client messages
    */
-  private handleClientMessage(client: any, data: any): void {
+  private handleClientMessage(client: WS, data: ClientMessage): void {
     switch (data.type) {
       case 'SUBSCRIBE_STATION':
         // Client wants updates for specific station
-        const stationCrs = data.stationCrs
-        if (stationCrs) {
+        const stationCrsUnknown = (data as { stationCrs?: unknown }).stationCrs
+        if (typeof stationCrsUnknown === 'string' && stationCrsUnknown) {
+          const stationCrs = stationCrsUnknown
           console.log(`Client subscribed to station: ${stationCrs}`)
-          // Store subscription preference (would implement more sophisticated filtering)
-          client._subscribedStations = client._subscribedStations || new Set()
-          client._subscribedStations.add(stationCrs)
+          // Store subscription preference (simple per-connection subscription set)
+          const subs = this.subscriptions.get(client) ?? new Set<string>()
+          subs.add(stationCrs)
+          this.subscriptions.set(client, subs)
         }
         break
 
       case 'UNSUBSCRIBE_STATION':
         // Client no longer wants updates for specific station
-        const unsubStationCrs = data.stationCrs
-        if (unsubStationCrs && client._subscribedStations) {
-          client._subscribedStations.delete(unsubStationCrs)
+        const unsubStationCrsUnknown = (data as { stationCrs?: unknown }).stationCrs
+        if (typeof unsubStationCrsUnknown === 'string' && unsubStationCrsUnknown) {
+          this.subscriptions.get(client)?.delete(unsubStationCrsUnknown)
         }
         break
 

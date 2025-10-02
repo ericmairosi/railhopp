@@ -144,10 +144,12 @@ This document outlines the new enhanced features added to Railhopp that integrat
 The following environment variables are already configured:
 
 ```env
-DARWIN_API_URL=https://lite.realtime.nationalrail.co.uk/OpenLDBWS/ldb11.asmx
-DARWIN_API_TOKEN=P-d3bf124c-1058-4040-8a62-87181a877d59
+DARWIN_ENABLED=true
+DARWIN_BROKER_URL={{DARWIN_BROKER_URL}}
+DARWIN_USERNAME={{DARWIN_USERNAME}}
+DARWIN_PASSWORD={{DARWIN_PASSWORD}}
 KNOWLEDGE_STATION_API_URL=https://api.rtt.io/api/v1
-KNOWLEDGE_STATION_API_TOKEN=P-88ffe920-471c-4fd9-8e0d-95d5b9b7a257
+KNOWLEDGE_STATION_API_TOKEN={{KNOWLEDGE_STATION_TOKEN}}
 ```
 
 ### Navigation

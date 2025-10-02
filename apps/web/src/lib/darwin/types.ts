@@ -25,7 +25,7 @@ export interface DarwinPubSubMessage {
     destinationType: string
   }
   messageID: string
-  type: any
+  type: string
   priority: number
   redelivered: boolean
   messageType: string
@@ -35,17 +35,17 @@ export interface DarwinPubSubMessage {
   correlationID?: string
   expiration: number
   text?: string
-  map?: any
+  map?: Record<string, unknown>
   properties: {
     Username: {
       string: string
       propertyType: string
-      [key: string]: any
+      [key: string]: unknown
     }
     PushPortSequence: {
       string: string
       propertyType: string
-      [key: string]: any
+      [key: string]: unknown
     }
   }
   timestamp: number
@@ -216,7 +216,7 @@ export class DarwinAPIError extends Error {
   constructor(
     message: string,
     public code: string,
-    public details?: any
+    public details?: unknown
   ) {
     super(message)
     this.name = 'DarwinAPIError'
@@ -230,7 +230,7 @@ export interface DarwinResponse<T> {
   error?: {
     code: string
     message: string
-    details?: any
+    details?: unknown
   }
   timestamp: string
 }

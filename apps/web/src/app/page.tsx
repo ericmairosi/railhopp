@@ -326,29 +326,12 @@ export default function RailhoppHome() {
 
               <div className="mb-4">
                 <div className="relative">
-                  <select
-                    value={departureStation.code}
-                    onChange={(e) => {
-                      const stationCode = e.target.value
-                      const stationName = [
-                        { code: 'KGX', name: 'London Kings Cross' },
-                        { code: 'EUS', name: 'London Euston' },
-                        { code: 'PAD', name: 'London Paddington' },
-                        { code: 'VIC', name: 'London Victoria' },
-                        { code: 'WAT', name: 'London Waterloo' },
-                        { code: 'LST', name: 'London Liverpool Street' },
-                      ].find((s) => s.code === stationCode)
-                      if (stationName) setDepartureStation(stationName)
-                    }}
-                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-transparent focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="KGX">London Kings Cross</option>
-                    <option value="EUS">London Euston</option>
-                    <option value="PAD">London Paddington</option>
-                    <option value="VIC">London Victoria</option>
-                    <option value="WAT">London Waterloo</option>
-                    <option value="LST">London Liverpool Street</option>
-                  </select>
+                  <StationSearch
+                    placeholder="Select station"
+                    value={`${departureStation.name} (${departureStation.code})`}
+                    onSelect={(s: Station) => setDepartureStation(s)}
+                    onClear={() => setDepartureStation({ code: 'KGX', name: 'London Kings Cross' })}
+                  />
                 </div>
               </div>
 

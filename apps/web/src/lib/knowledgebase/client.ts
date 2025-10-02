@@ -31,37 +31,57 @@ export class KnowledgebaseClient {
   private config: KnowledgebaseConfig
   private cacheAll?: { items: KBStationSummary[]; fetchedAt: number }
 
-  private extractStations(raw: any): any[] {
+  private extractStations(raw: unknown): unknown[] {
     if (!raw || typeof raw !== 'object') return []
-    // Common shapes
-    const candidates = [
-      raw?.Stations?.Station,
-      raw?.stations?.station,
-      raw?.StationList?.Station,
-      raw?.StationsList?.Station,
-      raw?.ArrayOfStation?.Station,
-      raw?.Stations,
-      raw?.stations,
-    ].filter(Boolean)
 
-    for (const c of candidates) {
+    const r = raw as Record<string, unknown>
+    const candidates: unknown[] = []
+
+    const Stations = r['Stations']
+    if (Stations && typeof Stations === 'object') {
+      candidates.push((Stations as Record<string, unknown>)['Station'])
+    }
+    const stations = r['stations']
+    if (stations && typeof stations === 'object') {
+      candidates.push((stations as Record<string, unknown>)['station'])
+    }
+    const StationList = r['StationList']
+    if (StationList && typeof StationList === 'object') {
+      candidates.push((StationList as Record<string, unknown>)['Station'])
+    }
+    const StationsList = r['StationsList']
+    if (StationsList && typeof StationsList === 'object') {
+      candidates.push((StationsList as Record<string, unknown>)['Station'])
+    }
+    const ArrayOfStation = r['ArrayOfStation']
+    if (ArrayOfStation && typeof ArrayOfStation === 'object') {
+      candidates.push((ArrayOfStation as Record<string, unknown>)['Station'])
+    }
+    // also push roots if they might directly be arrays
+    if (r['Stations']) candidates.push(r['Stations'])
+    if (r['stations']) candidates.push(r['stations'])
+
+    for (const c of candidates.filter(Boolean)) {
       if (Array.isArray(c)) return c
-      if (c && typeof c === 'object' && Array.isArray((c as any).Station)) return (c as any).Station
+      if (c && typeof c === 'object') {
+        const maybe = (c as Record<string, unknown>)['Station']
+        if (Array.isArray(maybe)) return maybe
+      }
     }
 
     // Fallback: deep scan for arrays of station-like objects
-    const result: any[] = []
-    const stack = [raw]
+    const result: unknown[] = []
+    const stack: unknown[] = [raw]
     while (stack.length) {
       const node = stack.pop()
       if (!node || typeof node !== 'object') continue
-      for (const [k, v] of Object.entries(node)) {
+      for (const [, v] of Object.entries(node as Record<string, unknown>)) {
         if (Array.isArray(v)) {
           const looksLikeStations = v.some(
-            (x) => x && typeof x === 'object' && (('CrsCode' in x) || ('CRS' in x) || ('StationName' in x) || ('Name' in x))
+            (x) => x && typeof x === 'object' && (("CrsCode" in (x as Record<string, unknown>)) || ("CRS" in (x as Record<string, unknown>)) || ("StationName" in (x as Record<string, unknown>)) || ("Name" in (x as Record<string, unknown>)))
           )
           if (looksLikeStations) {
-            result.push(...(v as any[]))
+            result.push(...(v as unknown[]))
           }
         } else if (v && typeof v === 'object') {
           stack.push(v)
@@ -87,7 +107,7 @@ export class KnowledgebaseClient {
     return this.config.apiUrl.replace(/\/$/, '')
   }
 
-  private async fetchXml(fullOrPath: string): Promise<any> {
+  private async fetchXml(fullOrPath: string): Promise<unknown> {
     const controller = new AbortController()
     const t = setTimeout(() => controller.abort(), this.config.timeout)
     try {
@@ -137,13 +157,9 @@ export class KnowledgebaseClient {
         }
         const json = await this.fetchXml(listUrl)
         const stations = this.extractStations(json)
-        const items: KBStationSummary[] = stations.map((s: any) => ({
-          code: s?.CrsCode || s?.CRS || '',
-          name: s?.Name || s?.StationName || '',
-          toc: s?.Toc || s?.TOC,
-          tiploc: s?.Tiploc || s?.TIPLOC,
-          stanox: s?.Stanox || s?.STANOX,
-        })).filter((x) => x.code && x.name)
+        const items: KBStationSummary[] = stations
+          .map((s) => this.toSummaryFromUnknown(s))
+          .filter((x): x is KBStationSummary => Boolean(x && x.code && x.name))
         allItems.push(...items)
       } catch (e) {
         // ignore this TOC
@@ -171,7 +187,7 @@ export class KnowledgebaseClient {
 
   // Detailed fetch by CRS with facilities/accessibility/address if present
   async getStationDetails(crs: string): Promise<KBStationDetail | null> {
-    let json: any
+    let json: unknown
     try {
       json = await this.fetchXml(`/4.0/station-${encodeURIComponent(crs.toUpperCase())}.xml`)
     } catch (e) {
@@ -187,42 +203,92 @@ export class KnowledgebaseClient {
       } catch {}
       throw e
     }
-    const s = json?.Station || json?.Stations?.Station
-    if (!s) return null
+    const root = (json || {}) as Record<string, unknown>
+    let s: unknown = root['Station']
+    if (!s) {
+      const stationsObj = root['Stations']
+      if (stationsObj && typeof stationsObj === 'object') {
+        s = (stationsObj as Record<string, unknown>)['Station']
+      }
+    }
+    if (!s || typeof s !== 'object') return null
+    const so = s as Record<string, unknown>
 
     const facilities: string[] = []
     const accessibility: string[] = []
 
-    const pushArray = (arr: any, target: string[]) => {
+    const pushArray = (arr: unknown, target: string[]) => {
       if (!arr) return
       if (Array.isArray(arr)) arr.forEach((x) => x && target.push(String(x).trim()))
       else target.push(String(arr).trim())
     }
 
     // Attempt to collect facilities/accessibility from common keys
-    const facRoot = s.Facilities || s.facilities || s.StationFacilities
+    const facRoot = (so['Facilities'] ?? so['facilities'] ?? so['StationFacilities']) as
+      | Record<string, unknown>
+      | undefined
     if (facRoot) {
-      pushArray(facRoot.Facility || facRoot.List || facRoot.Item, facilities)
+      pushArray(facRoot['Facility'] ?? facRoot['List'] ?? facRoot['Item'], facilities)
     }
-    const accRoot = s.Accessibility || s.accessibility || s.StationAccessibility
+    const accRoot = (so['Accessibility'] ?? so['accessibility'] ?? so['StationAccessibility']) as
+      | Record<string, unknown>
+      | undefined
     if (accRoot) {
-      pushArray(accRoot.Feature || accRoot.List || accRoot.Item, accessibility)
+      pushArray(accRoot['Feature'] ?? accRoot['List'] ?? accRoot['Item'], accessibility)
     }
 
-    const coords = s.Coordinates || s.Location || {}
+    const coords = (so['Coordinates'] ?? so['Location']) as Record<string, unknown> | undefined
 
     const detail: KBStationDetail = {
-      code: s?.CrsCode || s?.CRS || crs.toUpperCase(),
-      name: s?.Name || s?.StationName || '',
-      toc: s?.Toc || s?.TOC,
-      tiploc: s?.Tiploc || s?.TIPLOC,
-      stanox: s?.Stanox || s?.STANOX,
-      address: s?.Address || s?.PostalAddress || undefined,
-      postcode: s?.Postcode || s?.PostCode || s?.PostCodeText || undefined,
-      latitude: coords?.Latitude ? Number(coords.Latitude) : coords?.lat ? Number(coords.lat) : undefined,
-      longitude: coords?.Longitude ? Number(coords.Longitude) : coords?.lon ? Number(coords.lon) : undefined,
-      phone: s?.Phone || s?.Telephone || undefined,
-      website: s?.Website || s?.Url || undefined,
+      code:
+        (typeof so['CrsCode'] === 'string' && so['CrsCode']) ||
+        (typeof so['CRS'] === 'string' && so['CRS']) ||
+        crs.toUpperCase(),
+      name:
+        (typeof so['Name'] === 'string' && so['Name']) ||
+        (typeof so['StationName'] === 'string' && so['StationName']) ||
+        '',
+      toc:
+        (typeof so['Toc'] === 'string' && so['Toc']) ||
+        (typeof so['TOC'] === 'string' && so['TOC']) ||
+        undefined,
+      tiploc:
+        (typeof so['Tiploc'] === 'string' && so['Tiploc']) ||
+        (typeof so['TIPLOC'] === 'string' && so['TIPLOC']) ||
+        undefined,
+      stanox:
+        (typeof so['Stanox'] === 'string' && so['Stanox']) ||
+        (typeof so['STANOX'] === 'string' && so['STANOX']) ||
+        undefined,
+      address:
+        (typeof so['Address'] === 'string' && so['Address']) ||
+        (typeof so['PostalAddress'] === 'string' && so['PostalAddress']) ||
+        undefined,
+      postcode:
+        (typeof so['Postcode'] === 'string' && so['Postcode']) ||
+        (typeof so['PostCode'] === 'string' && so['PostCode']) ||
+        (typeof so['PostCodeText'] === 'string' && so['PostCodeText']) ||
+        undefined,
+      latitude:
+        coords && typeof coords['Latitude'] !== 'undefined'
+          ? Number(coords['Latitude'])
+          : coords && typeof coords['lat'] !== 'undefined'
+            ? Number(coords['lat'])
+            : undefined,
+      longitude:
+        coords && typeof coords['Longitude'] !== 'undefined'
+          ? Number(coords['Longitude'])
+          : coords && typeof coords['lon'] !== 'undefined'
+            ? Number(coords['lon'])
+            : undefined,
+      phone:
+        (typeof so['Phone'] === 'string' && so['Phone']) ||
+        (typeof so['Telephone'] === 'string' && so['Telephone']) ||
+        undefined,
+      website:
+        (typeof so['Website'] === 'string' && so['Website']) ||
+        (typeof so['Url'] === 'string' && so['Url']) ||
+        undefined,
       facilities: facilities.length ? facilities : undefined,
       accessibility: accessibility.length ? accessibility : undefined,
     }
@@ -242,6 +308,27 @@ export class KnowledgebaseClient {
     return all
       .filter((s) => s.name.toLowerCase().includes(n) || s.code.toLowerCase().includes(n))
       .slice(0, Math.min(Math.max(limit, 1), 25))
+  }
+
+  private toSummaryFromUnknown(u: unknown): KBStationSummary | null {
+    if (!u || typeof u !== 'object') return null
+    const o = u as Record<string, unknown>
+    const code =
+      (typeof o['CrsCode'] === 'string' && o['CrsCode']) ||
+      (typeof o['CRS'] === 'string' && o['CRS']) ||
+      ''
+    const name =
+      (typeof o['Name'] === 'string' && o['Name']) ||
+      (typeof o['StationName'] === 'string' && o['StationName']) ||
+      ''
+    const toc = (typeof o['Toc'] === 'string' && o['Toc']) || (typeof o['TOC'] === 'string' && o['TOC']) || undefined
+    const tiploc =
+      (typeof o['Tiploc'] === 'string' && o['Tiploc']) || (typeof o['TIPLOC'] === 'string' && o['TIPLOC']) || undefined
+    const stanox =
+      (typeof o['Stanox'] === 'string' && o['Stanox']) || (typeof o['STANOX'] === 'string' && o['STANOX']) || undefined
+
+    if (!code || !name) return null
+    return { code: String(code), name: String(name), toc: toc ? String(toc) : undefined, tiploc: tiploc ? String(tiploc) : undefined, stanox: stanox ? String(stanox) : undefined }
   }
 }
 

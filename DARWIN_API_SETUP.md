@@ -2,16 +2,15 @@
 
 ## Overview
 
-Railhopp now supports both **mock data** (for development/demo) and **real-time data** from National Rail's Darwin API. This guide shows you how to get real Darwin data flowing.
+Railhopp uses real-time data from National Rail's Darwin API via a Pub/Sub broker. SOAP has been removed and there is no mock data fallback. This guide shows you how to get live Darwin data flowing through the broker.
 
 ## ✅ Current Status
 
-- ✅ **XML parsing implemented** - Full SOAP response parsing with fast-xml-parser
-- ✅ **Error handling & fallbacks** - Graceful degradation from real data to mock data
-- ✅ **Mock data system** - High-quality mock data for development and demos
+- ✅ **Pub/Sub client implemented** - Lightweight, cache-aware client for Darwin broker
+- ✅ **Error handling** - Clear errors when broker/API unavailable (no mock fallback)
 - ✅ **Type safety** - Full TypeScript types for all data structures
 - ✅ **Logging & debugging** - Comprehensive logging for troubleshooting
-- 🔧 **API key validation needed** - Current key appears invalid/expired
+- 🔧 **Credentials validation** - Ensure Darwin broker credentials are valid
 
 ## 🚀 Quick Setup for Real Data
 
@@ -26,13 +25,13 @@ Railhopp now supports both **mock data** (for development/demo) and **real-time 
 Update your `.env.local` file:
 
 ```bash
-# Darwin API Configuration (for real-time data)
-DARWIN_API_KEY=P-your-actual-api-key-here
-DARWIN_API_URL=https://lite.realtime.nationalrail.co.uk/OpenLDBWS/ldb12.asmx
-
-# Optional: Control mock data behavior
-FORCE_MOCK_DATA=false    # Set to true to force mock data even with valid key
-USE_MOCK_DATA=true       # Set to false to disable mock data fallback
+# Darwin Pub/Sub Configuration (for real-time data)
+DARWIN_ENABLED=true
+DARWIN_BROKER_URL={{DARWIN_BROKER_URL}}
+DARWIN_USERNAME={{DARWIN_USERNAME}}
+DARWIN_PASSWORD={{DARWIN_PASSWORD}}
+# Optional tuning
+DARWIN_DEPARTURES_CACHE_TTL_SECONDS=30
 ```
 
 ### 3. Test Your Configuration
@@ -70,12 +69,11 @@ curl "http://localhost:3000/api/darwin/departures?crs=KGX&numRows=5"
 - ✅ Shows accurate train times, platforms, delays
 - ✅ Includes real disruption messages
 
-### With Invalid/Missing API Key
+### With Invalid/Missing Credentials
 
-- ✅ Automatically falls back to mock data
-- ✅ Shows clear "sample data" message
-- ✅ Provides realistic demo experience
-- ✅ No errors or crashes
+- ❌ No mock fallback is used
+- ✅ Returns clear error with guidance to configure broker/credentials
+- ✅ Health endpoints and logs help diagnose issues
 
 ## 📊 Data Structure
 

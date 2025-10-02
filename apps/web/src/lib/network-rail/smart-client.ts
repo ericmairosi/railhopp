@@ -57,7 +57,9 @@ export class SMARTClient {
     try {
       console.log('Loading SMART berth offset data...')
 
-      const response = await this.makeHTTPRequest('/ntrod/SupportingFileAuthenticate?type=SMART')
+      const response = await this.makeHTTPRequest<{ BERTHDATA?: SmartEntry[] }>(
+        '/ntrod/SupportingFileAuthenticate?type=SMART'
+      )
 
       if (!response.BERTHDATA) {
         throw new NetworkRailAPIError('Invalid SMART data structure', 'INVALID_DATA', { response })
@@ -353,7 +355,10 @@ export class SMARTClient {
   /**
    * Make HTTP request to Network Rail API
    */
-  private async makeHTTPRequest(endpoint: string, options: RequestInit = {}): Promise<any> {
+  private async makeHTTPRequest<T = unknown>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
     const url = `${this.config.apiUrl}${endpoint}`
     const credentials = Buffer.from(`${this.config.username}:${this.config.password}`).toString(
       'base64'

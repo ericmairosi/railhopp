@@ -6,10 +6,9 @@ import { getDarwinClient } from '@/lib/darwin/client'
 import { getNetworkRailClient } from '@/lib/network-rail/client'
 import { getKnowledgeStationClient } from '@/lib/knowledge-station/client'
 import { getNationalRailClient } from '@/lib/national-rail/client'
-import { LiveStationBoard, LiveDeparture, TrainServiceDetails } from '@/lib/darwin/types'
+import { LiveStationBoard, LiveDeparture } from '@/lib/darwin/types'
 import { EnhancedStationInfo, DisruptionInfo } from '@/lib/knowledge-station/types'
-import { EnhancedTrainService, TrainMovement } from '@/lib/network-rail/types'
-import { getRTTClient } from '@/lib/rtt/client'
+import { TrainMovement } from '@/lib/network-rail/types'
 
 export interface MultiAPIRequest {
   crs: string
@@ -34,7 +33,7 @@ export interface EnhancedDeparture extends LiveDeparture {
 
   // Knowledge Station enhancements
   facilityAlerts?: string[]
-  accessibilityInfo?: any
+  accessibilityInfo?: Record<string, unknown>
 
   // Aggregated data quality
   dataQuality: {
@@ -74,6 +73,11 @@ export interface AggregatedStationBoard {
     cacheHit: boolean
     processingTime: number
     apiCallsUsed: number
+    diagnostics: {
+      darwin: { attempted: boolean; available: boolean; error?: string }
+      networkRail: { attempted: boolean; enhanced: boolean; error?: string }
+      knowledgeStation: { attempted: boolean; enhanced: boolean; error?: string }
+    }
   }
 }
 
@@ -82,11 +86,16 @@ export class MultiAPIAggregator {
   private networkRailClient = getNetworkRailClient()
   private knowledgeStationClient = getKnowledgeStationClient()
   private nationalRailClient = getNationalRailClient()
-  private rttClient = getRTTClient()
+
+  // Last diagnostics snapshot from the most recent aggregation
+  private lastDiagnostics: AggregatedStationBoard['metadata']['diagnostics'] | null = null
 
   // Cache for reducing API calls
-  private cache = new Map<string, { data: any; expires: number }>()
-  private readonly cacheTimeout = 30000 // 30 seconds
+  private cache = new Map<string, { data: AggregatedStationBoard; expires: number }>()
+  private readonly cacheTimeoutMs = (() => {
+    const sec = parseInt(process.env.MULTI_API_AGGREGATOR_CACHE_TTL_SECONDS || '30', 10)
+    return (isNaN(sec) || sec <= 0 ? 30 : sec) * 1000
+  })()
 
   /**
    * Get enhanced departure board with data from multiple APIs
@@ -110,10 +119,22 @@ export class MultiAPIAggregator {
 
     let apiCallsUsed = 0
 
+    // Diagnostics snapshot
+    const diagnostics: {
+      darwin: { attempted: boolean; available: boolean; error?: string }
+      networkRail: { attempted: boolean; enhanced: boolean; error?: string }
+      knowledgeStation: { attempted: boolean; enhanced: boolean; error?: string }
+    } = {
+      darwin: { attempted: false, available: false },
+      networkRail: { attempted: false, enhanced: false },
+      knowledgeStation: { attempted: false, enhanced: false },
+    }
+
     try {
       // 1. Try primary data from Darwin (user's preferred source)
       let darwinBoard: LiveStationBoard | null = null
       try {
+        diagnostics.darwin.attempted = true
         darwinBoard = await this.darwinClient.getStationBoard({
           crs: request.crs,
           numRows: request.numRows || 10,
@@ -122,15 +143,17 @@ export class MultiAPIAggregator {
           timeOffset: request.timeOffset,
           timeWindow: request.timeWindow,
         })
+        diagnostics.darwin.available = true
         apiCallsUsed++
       } catch (e) {
         dataSources.failed.push('darwin')
+        diagnostics.darwin.error = e instanceof Error ? e.message : String(e)
       }
 
       // 2. Initialize enhanced departures (from Darwin or fallback)
       let enhancedDepartures: EnhancedDeparture[] = []
-      let stationName = darwinBoard?.stationName || `Station ${request.crs}`
-      let stationCode = request.crs
+      const stationName = darwinBoard?.stationName || `Station ${request.crs}`
+      const stationCode = request.crs
 
       if (darwinBoard) {
         dataSources.primary = 'darwin'
@@ -147,65 +170,20 @@ export class MultiAPIAggregator {
             confidence: 75, // Base confidence from Darwin
           },
         }))
-      } else {
-        // Darwin unavailable -> fall back to RTT.io if configured
-        if (this.rttClient && this.rttClient.isEnabled()) {
-          try {
-            const rttDeps = await this.rttClient.getDepartures({
-              crs: request.crs,
-              filterType: request.filterType,
-              filterCrs: request.filterCrs,
-              services: 'passenger',
-            })
-            apiCallsUsed++
-
-            enhancedDepartures = rttDeps.map((svc) => ({
-              serviceID: svc.serviceId,
-              operator: svc.operatorName,
-              operatorCode: svc.operatorCode,
-              destination: svc.destination.name,
-              destinationCRS: svc.destination.crs,
-              origin: svc.origin?.name,
-              originCRS: svc.origin?.crs,
-              std: svc.scheduledDeparture || '',
-              etd: svc.estimatedDeparture || (svc.delayMinutes === 0 ? 'On time' : ''),
-              platform: svc.platform,
-              serviceType: 'Train',
-              cancelled: svc.isCancelled,
-              length: svc.formation?.length,
-              delayReason: svc.cancelReason,
-              activities: [],
-              dataQuality: {
-                darwinFresh: false,
-                networkRailFresh: false,
-                knowledgeStationFresh: false,
-                confidence: 60,
-              },
-            }))
-
-            // Try to get a station name via RTT
-            try {
-              const info = await this.rttClient.getStationInfo(request.crs)
-              if (info?.name) stationName = info.name
-            } catch {}
-
-            dataSources.primary = 'rtt'
-          } catch (err) {
-            dataSources.failed.push('rtt')
-            // Leave enhancedDepartures empty; we'll still return a valid board
-          }
-        }
       }
 
       // 3. Enhance with Network Rail data if requested
       if (request.includeRealTimePosition && this.networkRailClient) {
         try {
+          diagnostics.networkRail.attempted = true
           await this.enhanceWithNetworkRail(enhancedDepartures)
           dataSources.enhanced.push('network-rail')
+          diagnostics.networkRail.enhanced = true
           apiCallsUsed++
         } catch (error) {
           console.warn('Network Rail enhancement failed:', error)
           dataSources.failed.push('network-rail')
+          diagnostics.networkRail.error = error instanceof Error ? error.message : String(error)
         }
       }
 
@@ -215,6 +193,7 @@ export class MultiAPIAggregator {
 
       if (request.includeEnhancedData && this.knowledgeStationClient.isEnabled()) {
         try {
+          diagnostics.knowledgeStation.attempted = true
           const [stationData, disruptionData] = await Promise.allSettled([
             this.knowledgeStationClient.getStationInfo({ crs: request.crs }),
             this.knowledgeStationClient.getDisruptions({ limit: 10 }),
@@ -223,6 +202,7 @@ export class MultiAPIAggregator {
           if (stationData.status === 'fulfilled') {
             stationInfo = stationData.value
             dataSources.enhanced.push('knowledge-station')
+            diagnostics.knowledgeStation.enhanced = true
           }
 
           if (disruptionData.status === 'fulfilled') {
@@ -235,13 +215,21 @@ export class MultiAPIAggregator {
         } catch (error) {
           console.warn('Knowledge Station enhancement failed:', error)
           dataSources.failed.push('knowledge-station')
+          diagnostics.knowledgeStation.error = error instanceof Error ? error.message : String(error)
         }
       }
 
       // 5. Calculate data quality metrics
       const dataQuality = this.calculateDataQuality(enhancedDepartures)
 
+      // If no departures found from any source, mark primary as none
+      if (enhancedDepartures.length === 0) {
+        dataSources.primary = 'none'
+      }
+
       // 6. Build aggregated response
+      // Save diagnostics snapshot for status endpoint
+      this.lastDiagnostics = diagnostics
       const aggregatedBoard: AggregatedStationBoard = {
         stationName,
         stationCode,
@@ -255,6 +243,7 @@ export class MultiAPIAggregator {
           cacheHit: false,
           processingTime: Date.now() - startTime,
           apiCallsUsed,
+          diagnostics,
         },
       }
 
@@ -267,6 +256,13 @@ export class MultiAPIAggregator {
       // Re-throw the original error so API routes can return structured errors
       throw error
     }
+  }
+
+  /**
+   * Get the most recent diagnostics snapshot from the last aggregation run
+   */
+  getLastDiagnostics(): AggregatedStationBoard['metadata']['diagnostics'] | null {
+    return this.lastDiagnostics
   }
 
   /**
@@ -334,7 +330,7 @@ export class MultiAPIAggregator {
   /**
    * Generate cache key for requests
    */
-  private generateCacheKey(type: string, request: any): string {
+  private generateCacheKey(type: string, request: MultiAPIRequest): string {
     const key = `${type}:${JSON.stringify(request)}`
     return key
   }
@@ -342,7 +338,7 @@ export class MultiAPIAggregator {
   /**
    * Get data from cache
    */
-  private getFromCache(key: string): any | null {
+  private getFromCache(key: string): AggregatedStationBoard | null {
     const cached = this.cache.get(key)
     if (cached && cached.expires > Date.now()) {
       return cached.data
@@ -356,10 +352,10 @@ export class MultiAPIAggregator {
   /**
    * Set data in cache
    */
-  private setCache(key: string, data: any): void {
+  private setCache(key: string, data: AggregatedStationBoard): void {
     this.cache.set(key, {
       data,
-      expires: Date.now() + this.cacheTimeout,
+      expires: Date.now() + this.cacheTimeoutMs,
     })
   }
 

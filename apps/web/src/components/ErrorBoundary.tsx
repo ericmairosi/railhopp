@@ -1,6 +1,7 @@
 'use client'
 
 import React, { Component, ErrorInfo, ReactNode } from 'react'
+import Link from 'next/link'
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react'
 
 interface Props {
@@ -60,7 +61,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             <h1 className="mb-4 text-2xl font-bold text-gray-900">Something went wrong</h1>
 
             <p className="mb-6 text-gray-600">
-              We're sorry, but something unexpected happened. Please try again or return to the home
+              We&apos;re sorry, but something unexpected happened. Please try again or return to the home
               page.
             </p>
 
@@ -92,13 +93,13 @@ export default class ErrorBoundary extends Component<Props, State> {
                 Try Again
               </button>
 
-              <a
+              <Link
                 href="/"
                 className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 transition-colors hover:bg-gray-50"
               >
                 <Home className="h-4 w-4" />
                 Go Home
-              </a>
+              </Link>
             </div>
           </div>
         </div>

@@ -215,14 +215,14 @@ export interface DisruptionInfo {
 export interface KnowledgeStationError {
   code: string
   message: string
-  details?: any
+  details?: unknown
 }
 
 export class KnowledgeStationAPIError extends Error {
   constructor(
     message: string,
     public code: string,
-    public details?: any
+    public details?: unknown
   ) {
     super(message)
     this.name = 'KnowledgeStationAPIError'
@@ -243,7 +243,7 @@ export interface EnhancedServiceInfo {
   // Enhanced data from Knowledge Station
   knowledgeStationData?: {
     facilities?: string[]
-    accessibility?: any
+    accessibility?: EnhancedStationInfo['accessibility']
     realTimeTracking?: ServiceTracking
     disruptions?: DisruptionInfo[]
   }

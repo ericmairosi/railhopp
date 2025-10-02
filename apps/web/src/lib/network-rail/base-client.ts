@@ -13,7 +13,7 @@ export interface BaseNetworkRailConfig extends NetworkRailConfig {
 export interface BaseNetworkRailMessage {
   messageType: string
   timestamp: string
-  data: any
+  data: unknown
   sourceSystem: string
   sequenceNumber?: number
 }
@@ -30,7 +30,7 @@ export abstract class BaseNetworkRailClient<T extends BaseNetworkRailMessage> {
   /**
    * Parse raw message into typed message
    */
-  protected abstract parseMessage(rawMessage: any): T
+  protected abstract parseMessage(rawMessage: unknown): T
 
   /**
    * Store processed message

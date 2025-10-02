@@ -183,7 +183,7 @@ export interface ScheduleMessage {
     CIF_catering_code: string
     CIF_service_branding: string
     schedule_location: ScheduleLocation[]
-    new_schedule_segment?: any
+    new_schedule_segment?: unknown
     train_uid: string
     applicable_timetable: string
     atoc_code: string
@@ -216,7 +216,7 @@ export class NetworkRailAPIError extends Error {
   constructor(
     message: string,
     public code: string,
-    public details?: any
+    public details?: unknown
   ) {
     super(message)
     this.name = 'NetworkRailAPIError'
@@ -299,7 +299,7 @@ export interface ScheduleConfig extends NetworkRailConfig {
 export interface ScheduleMessageWrapper {
   messageType: 'schedule' | 'association'
   timestamp: string
-  data: ScheduleMessage | any
+  data: unknown
   sourceSystem: 'ITPS'
   sequenceNumber: number
 }
@@ -307,7 +307,7 @@ export interface ScheduleMessageWrapper {
 export interface ScheduleRecord {
   recordType: 'schedule' | 'association'
   transactionType: 'Create' | 'Update' | 'Delete'
-  data: any
+  data: unknown
   timestamp: string
   sequenceNumber: number
 }
@@ -375,14 +375,14 @@ export interface TPSConfig extends NetworkRailConfig {
 export interface TPSMessage {
   messageType: 'timing_point' | 'route_section' | 'network_topology'
   timestamp: string
-  data: any
+  data: unknown
   sourceSystem: 'TPS'
   sequenceNumber: number
 }
 
 export interface TPSRecord {
   recordType: 'timing_point' | 'route_section' | 'network_topology'
-  data: any
+  data: unknown
   timestamp: string
   sequenceNumber: number
 }

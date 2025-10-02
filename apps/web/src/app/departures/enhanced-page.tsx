@@ -1,23 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import {
-  Train,
-  Clock,
-  MapPin,
-  Search,
-  Filter,
-  RefreshCw,
-  Calendar,
-  ArrowRight,
-  AlertTriangle,
-  Info,
-  CheckCircle,
-  Eye,
-  Star,
-  Share,
-} from 'lucide-react'
+import { Train, Filter, Eye, Share, RefreshCw, AlertTriangle } from 'lucide-react'
 import StationSearch from '@/components/StationSearch'
 import EnhancedDepartureBoard from '@/components/EnhancedDepartureBoard'
 import ErrorBoundary from '@/components/ErrorBoundary'
@@ -169,7 +155,7 @@ export default function EnhancedDeparturesPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center gap-3">
-              <a href="/" className="flex items-center gap-3">
+              <Link href="/" className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-r from-blue-600 to-blue-700">
                   <Train className="h-6 w-6 text-white" />
                 </div>
@@ -177,7 +163,7 @@ export default function EnhancedDeparturesPage() {
                   <h1 className="text-xl font-bold text-slate-900">Railhopp</h1>
                   <p className="text-xs text-slate-500">Live Departures</p>
                 </div>
-              </a>
+              </Link>
             </div>
 
             <div className="flex items-center gap-4">

@@ -4,7 +4,7 @@ This guide explains how to configure real rail data APIs for the Railhopp applic
 
 ## Current Status
 
-The system is designed to use real APIs but falls back to realistic mock data when APIs are unavailable. You can check API status at: `http://localhost:3000/api/status`
+The system uses real APIs only. There is no mock data fallback. Check API status at: `http://localhost:3000/api/status`.
 
 ## RTT (Real Time Trains) API
 
@@ -32,7 +32,7 @@ The API is returning 401 Unauthorized. This could be due to:
 2. **Check Documentation**: Review RTT API docs for current authentication method
 3. **Test Manually**: Try the API with curl:
    ```bash
-   curl -H "Authorization: Basic $(echo -n 'P-88ffe920-471c-4fd9-8e0d-95d5b9b7a257:' | base64)" \
+   curl -H "Authorization: Basic $(echo -n '{{KNOWLEDGE_STATION_TOKEN}}:' | base64)" \
         -H "User-Agent: Railhopp/1.0" \
         "https://api.rtt.io/api/v1/json/search/THL"
    ```
@@ -56,7 +56,7 @@ DARWIN_API_TOKEN=P-d3bf124c-1058-4040-8a62-87181a877d59
 
 ### Current Status
 
-Darwin API is configured but not implemented yet because it uses SOAP protocol, which requires additional setup.
+Darwin integration uses a Pub/Sub broker (no SOAP). Ensure the broker service is reachable and credentials are configured.
 
 ### Implementation Notes
 
@@ -68,12 +68,7 @@ Darwin API requires:
 
 ## Fallback Strategy
 
-When real APIs are unavailable, the system uses realistic mock data that:
-
-- **Updates dynamically** with realistic timestamps
-- **Rotates disruptions** to feel more realistic
-- **Includes variety** of disruption types (planned, technical, weather, industrial)
-- **Follows UK rail patterns** based on real-world scenarios
+When real APIs are unavailable, the system returns clear errors (no mock fallback). Use the status and diagnostics endpoints and logs to diagnose issues.
 
 ## API Endpoints
 
@@ -86,8 +81,8 @@ When real APIs are unavailable, the system uses realistic mock data that:
 To get the real APIs working:
 
 1. **Contact RTT Support**: Verify your API token and authentication method
-2. **Update Authentication**: Modify the auth headers in `/src/app/api/disruptions/route.ts`
+2. **Update Authentication**: Modify the auth headers in the Knowledge Station client
 3. **Test Changes**: Use the `/api/status` endpoint to verify connectivity
-4. **Implement Darwin**: Add SOAP client for Darwin API integration
+4. **Darwin**: Ensure Pub/Sub broker URL and credentials are set; SOAP is not used
 
 The system is designed to gracefully handle API failures and provide a fully functional experience with or without real API access.
