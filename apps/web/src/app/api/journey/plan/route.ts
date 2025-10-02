@@ -57,6 +57,27 @@ export async function POST(request: NextRequest) {
 
     console.log(`Planning journey from ${from} to ${to} on ${date} at ${time}`)
 
+    // No mock fallback: require real journey planning integration
+    const simulate = process.env.ENABLE_JOURNEY_SIMULATION === 'true'
+    if (!simulate) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'SERVICE_DISABLED',
+            message:
+              'Journey planner is not yet integrated with a real API. No mock fallback is used. Configure a journey API or enable simulation explicitly.',
+            details: {
+              enableSimulation: 'Set ENABLE_JOURNEY_SIMULATION=true to enable simulated results in development only',
+            },
+          },
+        },
+        { status: 503 }
+      )
+    }
+
+    // Simulation path (development only)
+
     // In a real implementation, this would integrate with multiple APIs:
     // 1. Darwin API for real-time data
     // 2. National Rail Enquiries for timetables

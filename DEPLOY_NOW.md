@@ -1,5 +1,7 @@
 # 🚀 **DEPLOY RAILHOPP NOW** - Final Instructions
 
+> Note: Fly.io is the canonical deployment path. See DEPLOYMENT_READY.md for the authoritative guide. The steps below are legacy alternatives (keep placeholders, do not paste secrets).
+
 ## ✅ **Status: READY FOR PRODUCTION**
 
 Your Railhopp application is **completely ready** for deployment! Here's how to get it live in the next 10 minutes:

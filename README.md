@@ -20,7 +20,7 @@ This is a monorepo built with:
 - **Database**: Supabase (PostgreSQL) with real-time subscriptions
 - **Package Management**: PNPM with workspaces
 - **Build System**: Turborepo for efficient builds
-- **Deployment**: Vercel (optimized for Next.js)
+- **Deployment**: Fly.io (canonical, Docker) — Vercel optional for web only
 
 ## 📁 Project Structure
 

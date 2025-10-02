@@ -3,9 +3,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getDarwinClient } from '@/lib/darwin/client'
 import { DarwinAPIError } from '@/lib/darwin/types'
 import apiCache, { generateCacheKey } from '@/lib/cache'
+import { rateLimit } from '@/lib/rate-limit'
 
 export async function GET(request: NextRequest) {
   try {
+    // Rate limit: 60 requests per 60 seconds per IP for this endpoint
+    const rl = await rateLimit(request, { keyPrefix: 'rl:darwin:departures', limit: 60, windowSeconds: 60 })
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { success: false, error: { code: 'RATE_LIMITED', message: 'Too many requests. Please try again later.' }, retryAfter: rl.reset.toISOString() },
+        { status: 429 }
+      )
+    }
     const { searchParams } = new URL(request.url)
     const crs = searchParams.get('crs')?.trim().toUpperCase()
     const numRows = searchParams.get('numRows')
@@ -46,7 +55,7 @@ export async function GET(request: NextRequest) {
     )
 
     // Check cache first (30 second TTL for live data)
-    const cachedData = apiCache.get(cacheKey)
+    const cachedData = await apiCache.get(cacheKey)
     if (cachedData) {
       return NextResponse.json({
         ...cachedData,
@@ -104,7 +113,7 @@ export async function GET(request: NextRequest) {
 
     // Cache the successful response, TTL configurable via env
     const ttl = parseInt(process.env.DARWIN_DEPARTURES_CACHE_TTL_SECONDS || '30', 10)
-    apiCache.set(cacheKey, responseData, isNaN(ttl) ? 30 : ttl)
+    await apiCache.set(cacheKey, responseData, isNaN(ttl) ? 30 : ttl)
 
     return NextResponse.json(responseData)
   } catch (error) {

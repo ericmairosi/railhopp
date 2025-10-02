@@ -20,6 +20,20 @@ import {
 export class KnowledgeStationClient {
   private config: KnowledgeStationConfig
   private baseHeaders: Record<string, string>
+  private getAuthHeader(): string {
+    const username = process.env.KNOWLEDGE_STATION_USERNAME
+    const password = process.env.KNOWLEDGE_STATION_PASSWORD || ''
+    if (username) {
+      const creds = Buffer.from(`${username}:${password}`).toString('base64')
+      return `Basic ${creds}`
+    }
+    if (this.config.token) {
+      // RTT commonly uses Basic with token as username and empty password
+      const creds = Buffer.from(`${this.config.token}:`).toString('base64')
+      return `Basic ${creds}`
+    }
+    return ''
+  }
 
   constructor(config: KnowledgeStationConfig) {
     this.config = {
@@ -29,10 +43,11 @@ export class KnowledgeStationClient {
       ...config,
     }
 
+    const auth = this.getAuthHeader()
     this.baseHeaders = {
       'Content-Type': 'application/json',
       'User-Agent': 'Railhopp-Knowledge-Station-Client/1.0',
-      Authorization: `Bearer ${this.config.token}`,
+      ...(auth ? { Authorization: auth } : {}),
     }
   }
 
@@ -40,12 +55,9 @@ export class KnowledgeStationClient {
    * Check if Knowledge Station is enabled and configured
    */
   isEnabled(): boolean {
-    return Boolean(
-      this.config.enabled &&
-        this.config.apiUrl &&
-        this.config.token &&
-        this.config.token !== 'your_knowledge_station_token_here'
-    )
+    const hasBasic = Boolean(process.env.KNOWLEDGE_STATION_USERNAME)
+    const hasToken = Boolean(this.config.token && this.config.token !== 'your_knowledge_station_token_here')
+    return Boolean(this.config.enabled && this.config.apiUrl && (hasBasic || hasToken))
   }
 
   /**
@@ -64,6 +76,8 @@ export class KnowledgeStationClient {
     const requestOptions: RequestInit = {
       headers: {
         ...this.baseHeaders,
+        // Recompute auth header each request in case env changes at runtime
+        ...(this.getAuthHeader() ? { Authorization: this.getAuthHeader() } : {}),
         ...options.headers,
       },
       ...options,
@@ -84,6 +98,13 @@ export class KnowledgeStationClient {
 
         if (!response.ok) {
           const errorBody = await response.text()
+          if (response.status === 401 || response.status === 403) {
+            throw new KnowledgeStationAPIError(
+              `Unauthorized: Check Knowledge Station credentials and auth scheme (Basic vs token)`,
+              'UNAUTHORIZED',
+              { status: response.status, body: errorBody, url }
+            )
+          }
           throw new KnowledgeStationAPIError(
             `HTTP ${response.status}: ${response.statusText}`,
             'HTTP_ERROR',

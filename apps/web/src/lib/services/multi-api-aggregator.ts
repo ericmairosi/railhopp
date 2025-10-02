@@ -9,6 +9,7 @@ import { getNationalRailClient } from '@/lib/national-rail/client'
 import { LiveStationBoard, LiveDeparture } from '@/lib/darwin/types'
 import { EnhancedStationInfo, DisruptionInfo } from '@/lib/knowledge-station/types'
 import { TrainMovement } from '@/lib/network-rail/types'
+import apiCache from '@/lib/cache'
 
 export interface MultiAPIRequest {
   crs: string
@@ -90,11 +91,10 @@ export class MultiAPIAggregator {
   // Last diagnostics snapshot from the most recent aggregation
   private lastDiagnostics: AggregatedStationBoard['metadata']['diagnostics'] | null = null
 
-  // Cache for reducing API calls
-  private cache = new Map<string, { data: AggregatedStationBoard; expires: number }>()
-  private readonly cacheTimeoutMs = (() => {
+  // Cache TTL (seconds)
+  private readonly cacheTimeoutSec = (() => {
     const sec = parseInt(process.env.MULTI_API_AGGREGATOR_CACHE_TTL_SECONDS || '30', 10)
-    return (isNaN(sec) || sec <= 0 ? 30 : sec) * 1000
+    return (isNaN(sec) || sec <= 0 ? 30 : sec)
   })()
 
   /**
@@ -105,7 +105,7 @@ export class MultiAPIAggregator {
     const cacheKey = this.generateCacheKey('departures', request)
 
     // Check cache first
-    const cached = this.getFromCache(cacheKey)
+    const cached = await apiCache.get<AggregatedStationBoard>(cacheKey)
     if (cached) {
       cached.metadata.cacheHit = true
       return cached
@@ -248,7 +248,7 @@ export class MultiAPIAggregator {
       }
 
       // Cache the result
-      this.setCache(cacheKey, aggregatedBoard)
+      await apiCache.set(cacheKey, aggregatedBoard, this.cacheTimeoutSec)
 
       return aggregatedBoard
     } catch (error) {
@@ -335,41 +335,7 @@ export class MultiAPIAggregator {
     return key
   }
 
-  /**
-   * Get data from cache
-   */
-  private getFromCache(key: string): AggregatedStationBoard | null {
-    const cached = this.cache.get(key)
-    if (cached && cached.expires > Date.now()) {
-      return cached.data
-    }
-    if (cached) {
-      this.cache.delete(key)
-    }
-    return null
-  }
-
-  /**
-   * Set data in cache
-   */
-  private setCache(key: string, data: AggregatedStationBoard): void {
-    this.cache.set(key, {
-      data,
-      expires: Date.now() + this.cacheTimeoutMs,
-    })
-  }
-
-  /**
-   * Clear expired cache entries
-   */
-  private clearExpiredCache(): void {
-    const now = Date.now()
-    for (const [key, value] of this.cache.entries()) {
-      if (value.expires <= now) {
-        this.cache.delete(key)
-      }
-    }
-  }
+  // Cache handled by shared apiCache (Redis or memory)
 
   /**
    * Get service status from all APIs
