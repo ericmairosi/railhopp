@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next'
+import { withSentryConfig } from '@sentry/nextjs'
 
 const nextConfig: NextConfig = {
   // Skip ESLint during builds for deployment
@@ -22,4 +23,4 @@ const nextConfig: NextConfig = {
   // Keep server-side rendering for API routes and real-time features
 }
 
-export default nextConfig
+export default withSentryConfig(nextConfig, { silent: true }, { autoInstrumentServerFunctions: true })

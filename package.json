@@ -26,7 +26,12 @@
     "fly:logs": "fly logs",
     "fly:status": "fly status",
     "fly:ssh": "fly ssh console",
-    "fly:validate": "bash ./scripts/validate-deployment.sh"
+    "fly:validate": "bash ./scripts/validate-deployment.sh",
+    "fly:broker:deploy": "bash ./scripts/fly-broker.sh deploy",
+    "fly:broker:logs": "bash ./scripts/fly-broker.sh logs",
+    "fly:broker:open": "bash ./scripts/fly-broker.sh open",
+    "fly:broker:status": "bash ./scripts/fly-broker.sh status",
+    "fly:broker:ssh": "bash ./scripts/fly-broker.sh ssh"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
