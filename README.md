@@ -123,15 +123,17 @@ pnpm --filter web dev
 
 ### Data Sources
 
-- **National Rail Darwin API**: Real-time departures/arrivals
+- **National Rail Darwin (via Pub/Sub broker)**: Real-time departures/arrivals
 - **Network Rail Feeds**: Train movements, TSRs, VSTP changes
 - **Knowledgebase API**: Station and static data
+- **Knowledge Station (RTT.io)**: Enhanced station and disruption data (auth required)
 
 ### Real-time Updates
 
 - WebSocket connections for live data
 - Server-Sent Events for notifications
 - Optimistic UI updates
+- No mock fallback: APIs must be configured; clear errors are returned otherwise
 
 ## 🎨 UI Components
 
@@ -147,7 +149,7 @@ Custom railway-themed components built with Radix UI:
 Multi-layer caching for optimal performance:
 
 1. **CDN Edge Cache** (Vercel): Static assets, 1 year
-2. **API Cache** (Redis): Dynamic data, 1-60 minutes
+2. **API Cache** (Redis via ioredis): Dynamic data, 1-60 minutes
 3. **Database Cache**: Query results, configurable
 4. **Browser Cache**: Assets and data, optimized headers
 
