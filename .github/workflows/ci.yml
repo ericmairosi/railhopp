@@ -51,3 +51,26 @@ jobs:
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
         run: pnpm --filter web run build
+
+  smoke-tests:
+    if: ${{ secrets.STAGING_WEB_URL != '' }}
+    needs: build-and-check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Smoke test endpoints
+        env:
+          WEB_URL: ${{ secrets.STAGING_WEB_URL }}
+          BROKER_URL: ${{ secrets.STAGING_BROKER_URL }}
+        run: |
+          chmod +x scripts/test-endpoints.sh
+          ./scripts/test-endpoints.sh
+
+      - name: Rate limit test (Darwin departures)
+        env:
+          WEB_URL: ${{ secrets.STAGING_WEB_URL }}
+        run: |
+          chmod +x scripts/test-rate-limit.sh
+          ./scripts/test-rate-limit.sh "/api/darwin/departures?crs=KGX" 80

@@ -31,7 +31,10 @@
     "fly:broker:logs": "bash ./scripts/fly-broker.sh logs",
     "fly:broker:open": "bash ./scripts/fly-broker.sh open",
     "fly:broker:status": "bash ./scripts/fly-broker.sh status",
-    "fly:broker:ssh": "bash ./scripts/fly-broker.sh ssh"
+    "fly:broker:ssh": "bash ./scripts/fly-broker.sh ssh",
+    "fly:broker:scale": "bash ./scripts/fly-broker.sh scale",
+    "fly:broker:releases": "bash ./scripts/fly-broker.sh releases",
+    "fly:broker:rollback": "bash ./scripts/fly-broker.sh rollback"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

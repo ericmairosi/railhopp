@@ -25,8 +25,22 @@ case "$CMD" in
   ssh)
     fly ssh console -c "$CONFIG_PATH"
     ;;
+  scale)
+    COUNT="${2:-}"
+    if [[ -z "$COUNT" ]]; then
+      echo "Usage: $0 scale <count>" >&2
+      exit 2
+    fi
+    fly scale count "$COUNT" -c "$CONFIG_PATH"
+    ;;
+  releases)
+    fly releases -c "$CONFIG_PATH"
+    ;;
+  rollback)
+    fly deploy --strategy immediate --rollback -c "$CONFIG_PATH"
+    ;;
   *)
-    echo "Usage: $0 {deploy|logs|open|status|ssh}" >&2
+    echo "Usage: $0 {deploy|logs|open|status|ssh|scale|releases|rollback}" >&2
     exit 2
     ;;
  esac
