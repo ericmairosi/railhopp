@@ -61,8 +61,8 @@ export default class ErrorBoundary extends Component<Props, State> {
             <h1 className="mb-4 text-2xl font-bold text-gray-900">Something went wrong</h1>
 
             <p className="mb-6 text-gray-600">
-              We&apos;re sorry, but something unexpected happened. Please try again or return to the home
-              page.
+              We&apos;re sorry, but something unexpected happened. Please try again or return to the
+              home page.
             </p>
 
             {process.env.NODE_ENV === 'development' && this.state.error && (

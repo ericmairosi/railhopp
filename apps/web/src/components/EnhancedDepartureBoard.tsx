@@ -132,11 +132,19 @@ export default function EnhancedDepartureBoard({
         let result = await response.json()
 
         // Fallback chain: unified -> v2 -> raw darwin
-        if (result?.success && Array.isArray(result.data?.departures) && result.data.departures.length === 0) {
+        if (
+          result?.success &&
+          Array.isArray(result.data?.departures) &&
+          result.data.departures.length === 0
+        ) {
           try {
             const r2 = await fetch(`/api/v2/departures?${params.toString()}`)
             const json2 = await r2.json()
-            if (json2?.success && Array.isArray(json2.data?.departures) && json2.data.departures.length > 0) {
+            if (
+              json2?.success &&
+              Array.isArray(json2.data?.departures) &&
+              json2.data.departures.length > 0
+            ) {
               result = json2
             } else {
               const rd = await fetch(`/api/darwin/departures?${params.toString()}`)
@@ -162,7 +170,7 @@ export default function EnhancedDepartureBoard({
             stationName: d.stationName || d.locationName || `Station ${crs.toUpperCase()}`,
             stationCode: d.stationCode || d.crs || crs.toUpperCase(),
             crs: d.stationCode || d.crs || crs.toUpperCase(),
-            departures: (d.departures || d.trainServices || []),
+            departures: d.departures || d.trainServices || [],
             generatedAt: d.generatedAt || new Date().toISOString(),
             messages: d.messages,
             platformsAvailable: d.platformsAvailable ?? true,
@@ -188,8 +196,7 @@ export default function EnhancedDepartureBoard({
               messages: [
                 {
                   severity: 'info',
-                  message:
-                    'Live connection is established. Waiting for first departure updates…',
+                  message: 'Live connection is established. Waiting for first departure updates…',
                   category: 'info',
                 },
               ],
@@ -535,7 +542,9 @@ export default function EnhancedDepartureBoard({
 
             {/* Pub/Sub status badge */}
             <div className="hidden items-center gap-2 rounded-md bg-white/10 px-2 py-1 text-xs text-white sm:flex">
-              <span className={`inline-block h-2 w-2 rounded-full ${pubSubStatus?.ok ? 'bg-green-400' : 'bg-red-400'}`} />
+              <span
+                className={`inline-block h-2 w-2 rounded-full ${pubSubStatus?.ok ? 'bg-green-400' : 'bg-red-400'}`}
+              />
               <span>pubsub: {pubSubStatus?.ok ? 'connected' : 'unavailable'}</span>
             </div>
 
@@ -601,11 +610,13 @@ export default function EnhancedDepartureBoard({
         <div className="flex items-center justify-between">
           <div className="flex flex-wrap items-center gap-3">
             <span>
-              Source: <span className="font-semibold uppercase">{sourceInfo?.primary || 'unknown'}</span>
+              Source:{' '}
+              <span className="font-semibold uppercase">{sourceInfo?.primary || 'unknown'}</span>
             </span>
             {sourceInfo?.enhanced && sourceInfo.enhanced.length > 0 && (
               <span>
-                Enhanced: {sourceInfo.enhanced.map((s, i) => (
+                Enhanced:{' '}
+                {sourceInfo.enhanced.map((s, i) => (
                   <span key={`${s}-${i}`} className="uppercase">
                     {s}
                     {i < sourceInfo.enhanced.length - 1 ? ', ' : ''}
@@ -615,7 +626,8 @@ export default function EnhancedDepartureBoard({
             )}
             {sourceInfo?.failed && sourceInfo.failed.length > 0 && (
               <span className="text-red-600">
-                Failed: {sourceInfo.failed.map((s, i) => (
+                Failed:{' '}
+                {sourceInfo.failed.map((s, i) => (
                   <span key={`${s}-${i}`} className="uppercase">
                     {s}
                     {i < sourceInfo.failed.length - 1 ? ', ' : ''}
@@ -642,9 +654,10 @@ export default function EnhancedDepartureBoard({
                   <div className="mb-1 font-semibold uppercase">{key}</div>
                   <div className="text-gray-600">
                     {(() => {
-                      const ok = key === 'networkRail' || key === 'knowledgeStation'
-                        ? (d as { enhanced: boolean }).enhanced
-                        : (d as { available: boolean }).available
+                      const ok =
+                        key === 'networkRail' || key === 'knowledgeStation'
+                          ? (d as { enhanced: boolean }).enhanced
+                          : (d as { available: boolean }).available
                       return ok ? (
                         <span className="text-green-700">OK</span>
                       ) : (
@@ -722,23 +735,30 @@ export default function EnhancedDepartureBoard({
                   )
                 }
                 if (filterPlat) {
-                  list = list.filter((d) => (d.platform || '').toLowerCase() === filterPlat.toLowerCase())
+                  list = list.filter(
+                    (d) => (d.platform || '').toLowerCase() === filterPlat.toLowerCase()
+                  )
                 }
                 if (filterTOC) {
                   const tocQ = filterTOC.trim().toUpperCase()
                   list = list.filter(
-                    (d) => (d.operatorCode || '').toUpperCase() === tocQ || (d.operator || '').toUpperCase().includes(tocQ)
+                    (d) =>
+                      (d.operatorCode || '').toUpperCase() === tocQ ||
+                      (d.operator || '').toUpperCase().includes(tocQ)
                   )
                 }
                 const rows = list
-                
+
                 return (
                   <>
                     {/* Summary bar with sticky filters */}
                     <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white/80 px-6 py-2 text-xs text-gray-600 backdrop-blur">
                       <div>
-                        Showing <span className="font-semibold text-gray-800">{rows.length}</span> of{' '}
-                        <span className="font-semibold text-gray-800">{stationBoard.departures.length}</span>
+                        Showing <span className="font-semibold text-gray-800">{rows.length}</span>{' '}
+                        of{' '}
+                        <span className="font-semibold text-gray-800">
+                          {stationBoard.departures.length}
+                        </span>
                         {filterDest || filterPlat || filterTOC ? ' • filters active' : ''}
                       </div>
                       {(filterDest || filterPlat || filterTOC) && (
@@ -772,9 +792,9 @@ export default function EnhancedDepartureBoard({
                           )}
                           <button
                             onClick={() => {
-                              setFilterDest('');
-                              setFilterPlat('');
-                              setFilterTOC('');
+                              setFilterDest('')
+                              setFilterPlat('')
+                              setFilterTOC('')
                             }}
                             className="ml-2 text-blue-600 hover:underline"
                           >
@@ -827,18 +847,28 @@ export default function EnhancedDepartureBoard({
                               {departure.etd !== departure.std &&
                                 departure.etd !== 'On time' &&
                                 departure.etd !== 'Delayed' && (
-                                  <div className="text-xs text-red-600 line-through">{departure.std}</div>
+                                  <div className="text-xs text-red-600 line-through">
+                                    {departure.std}
+                                  </div>
                                 )}
                             </div>
 
                             {/* Destination */}
-                            <div className={cn(viewMode === 'simple' ? 'col-span-6' : 'col-span-4')}>
-                              <div className="font-semibold text-gray-900">{departure.destination}</div>
-                              <div className="mt-0.5 text-xs text-gray-500">{departure.destinationCRS}</div>
+                            <div
+                              className={cn(viewMode === 'simple' ? 'col-span-6' : 'col-span-4')}
+                            >
+                              <div className="font-semibold text-gray-900">
+                                {departure.destination}
+                              </div>
+                              <div className="mt-0.5 text-xs text-gray-500">
+                                {departure.destinationCRS}
+                              </div>
                             </div>
 
                             {/* Platform */}
-                            <div className={cn(viewMode === 'simple' ? 'col-span-2' : 'col-span-1')}>
+                            <div
+                              className={cn(viewMode === 'simple' ? 'col-span-2' : 'col-span-1')}
+                            >
                               {departure.platform ? (
                                 <span className="inline-flex items-center rounded bg-blue-600 px-2 py-1 text-xs font-bold text-white">
                                   {departure.platform}
@@ -850,11 +880,15 @@ export default function EnhancedDepartureBoard({
 
                             {/* Operator (detailed only) */}
                             {viewMode === 'detailed' && (
-                              <div className="col-span-2 text-sm text-gray-700">{departure.operator}</div>
+                              <div className="col-span-2 text-sm text-gray-700">
+                                {departure.operator}
+                              </div>
                             )}
 
                             {/* Status */}
-                            <div className={cn(viewMode === 'simple' ? 'col-span-2' : 'col-span-2')}>
+                            <div
+                              className={cn(viewMode === 'simple' ? 'col-span-2' : 'col-span-2')}
+                            >
                               <div className="flex items-center gap-2">
                                 {getStatusIcon(serviceStatus.status)}
                                 <span className={cn('text-sm font-medium', serviceStatus.text)}>

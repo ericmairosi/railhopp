@@ -1,12 +1,7 @@
 // Darwin API Client for UK Rail Real-time Information
 // Pub/Sub-only implementation with lightweight in-memory caching
 
-import {
-  DarwinConfig,
-  StationBoardRequest,
-  LiveStationBoard,
-  TrainServiceDetails,
-} from './types'
+import { DarwinConfig, StationBoardRequest, LiveStationBoard, TrainServiceDetails } from './types'
 import { getDarwinPubSubClient } from './pubsub-client'
 
 export class DarwinClient {

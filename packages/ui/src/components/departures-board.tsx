@@ -1,7 +1,7 @@
 import React from 'react'
 import { Clock, MapPin, AlertTriangle } from 'lucide-react'
 import { Button } from './button'
-import { cn, formatTime, formatDelay, getStatusColor } from '../lib/utils'
+import { cn, formatTime } from '../lib/utils'
 
 interface Departure {
   service: string
@@ -76,7 +76,6 @@ export function DeparturesBoard({
 function DepartureRow({ departure }: { departure: Departure }) {
   const isDelayed =
     departure.status === 'delayed' && departure.delayMinutes && departure.delayMinutes > 0
-  const isCancelled = departure.status === 'cancelled'
 
   return (
     <div className="p-4 transition-colors hover:bg-gray-50">

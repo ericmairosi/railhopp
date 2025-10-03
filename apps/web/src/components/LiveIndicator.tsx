@@ -33,7 +33,8 @@ export default function LiveIndicator({ className = '' }: { className?: string }
     }
   }, [])
 
-  const color = status === 'live' ? 'bg-green-500' : status === 'idle' ? 'bg-amber-500' : 'bg-slate-400'
+  const color =
+    status === 'live' ? 'bg-green-500' : status === 'idle' ? 'bg-amber-500' : 'bg-slate-400'
   const label = status === 'live' ? 'Live' : status === 'idle' ? 'Idle' : 'Connecting'
 
   return (

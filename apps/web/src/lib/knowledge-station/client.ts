@@ -56,7 +56,9 @@ export class KnowledgeStationClient {
    */
   isEnabled(): boolean {
     const hasBasic = Boolean(process.env.KNOWLEDGE_STATION_USERNAME)
-    const hasToken = Boolean(this.config.token && this.config.token !== 'your_knowledge_station_token_here')
+    const hasToken = Boolean(
+      this.config.token && this.config.token !== 'your_knowledge_station_token_here'
+    )
     return Boolean(this.config.enabled && this.config.apiUrl && (hasBasic || hasToken))
   }
 
@@ -226,7 +228,9 @@ export class KnowledgeStationClient {
     if (request.limit) queryParams.append('limit', request.limit.toString())
 
     try {
-      const response = await this.makeRequest<{ disruptions?: KnowledgeStationDisruption[] } | KnowledgeStationDisruption[]>(`/disruptions?${queryParams}`)
+      const response = await this.makeRequest<
+        { disruptions?: KnowledgeStationDisruption[] } | KnowledgeStationDisruption[]
+      >(`/disruptions?${queryParams}`)
       const list: KnowledgeStationDisruption[] = Array.isArray(response)
         ? response
         : response?.disruptions || []
@@ -263,11 +267,13 @@ export class KnowledgeStationClient {
 
     // Assume upstream endpoint shape; adjust as needed to your KS API
     const queryParams = new URLSearchParams({ q, limit: String(limit) })
-    const response = await this.makeRequest<{ stations?: Array<{ crs?: string; code?: string; name?: string; region?: string }> } | Array<{ crs?: string; code?: string; name?: string; region?: string }>>(`/stations/search?${queryParams.toString()}`)
+    const response = await this.makeRequest<
+      | { stations?: Array<{ crs?: string; code?: string; name?: string; region?: string }> }
+      | Array<{ crs?: string; code?: string; name?: string; region?: string }>
+    >(`/stations/search?${queryParams.toString()}`)
 
-    const items: Array<{ crs?: string; code?: string; name?: string; region?: string }> = Array.isArray(response)
-      ? response
-      : response?.stations || []
+    const items: Array<{ crs?: string; code?: string; name?: string; region?: string }> =
+      Array.isArray(response) ? response : response?.stations || []
 
     return items
       .filter(Boolean)
@@ -364,7 +370,7 @@ export class KnowledgeStationClient {
             }
           : undefined,
       nextStops:
-        rawData.locations?.slice(1, 4).map((location) => ({
+        rawData.locations?.slice(1).map((location) => ({
           name: location.name,
           crs: location.crs,
           scheduledArrival: location.scheduledArrival,

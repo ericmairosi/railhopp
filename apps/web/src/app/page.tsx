@@ -17,6 +17,7 @@ import EnhancedDepartureBoard from '@/components/EnhancedDepartureBoard'
 import NetworkStatusDashboard from '@/components/NetworkStatusDashboard'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import StationSummaryCard from '@/components/StationSummaryCard'
+import PopularStations from '@/components/PopularStations'
 
 interface Station {
   code: string
@@ -303,6 +304,11 @@ export default function RailhoppHome() {
                 </div>
               </a>
             </div>
+          </div>
+
+          {/* Popular Stations (P2) */}
+          <div className="mb-12">
+            <PopularStations />
           </div>
 
           {/* Station Summary (Knowledgebase) */}

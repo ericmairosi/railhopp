@@ -154,7 +154,9 @@ export function StationSearch({
           )}
 
           {query.length >= 2 && filteredStations.length === 0 && (
-            <div className="p-4 text-center text-gray-500">No stations found for "{query}"</div>
+            <div className="p-4 text-center text-gray-500">
+              No stations found for &quot;{query}&quot;
+            </div>
           )}
         </div>
       )}

@@ -78,7 +78,13 @@ export class KnowledgebaseClient {
       for (const [, v] of Object.entries(node as Record<string, unknown>)) {
         if (Array.isArray(v)) {
           const looksLikeStations = v.some(
-            (x) => x && typeof x === 'object' && (("CrsCode" in (x as Record<string, unknown>)) || ("CRS" in (x as Record<string, unknown>)) || ("StationName" in (x as Record<string, unknown>)) || ("Name" in (x as Record<string, unknown>)))
+            (x) =>
+              x &&
+              typeof x === 'object' &&
+              ('CrsCode' in (x as Record<string, unknown>) ||
+                'CRS' in (x as Record<string, unknown>) ||
+                'StationName' in (x as Record<string, unknown>) ||
+                'Name' in (x as Record<string, unknown>))
           )
           if (looksLikeStations) {
             result.push(...(v as unknown[]))
@@ -142,7 +148,10 @@ export class KnowledgebaseClient {
     }
 
     const primary = (this.config.toc || 'LE').toUpperCase()
-    const listEnv = (process.env.KNOWLEDGEBASE_TOC_LIST || '').split(',').map((s) => s.trim().toUpperCase()).filter(Boolean)
+    const listEnv = (process.env.KNOWLEDGEBASE_TOC_LIST || '')
+      .split(',')
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean)
     const tocs = Array.from(new Set([primary, ...listEnv])).slice(0, 8) // cap at 8 TOCs max
 
     const allItems: KBStationSummary[] = []
@@ -321,14 +330,27 @@ export class KnowledgebaseClient {
       (typeof o['Name'] === 'string' && o['Name']) ||
       (typeof o['StationName'] === 'string' && o['StationName']) ||
       ''
-    const toc = (typeof o['Toc'] === 'string' && o['Toc']) || (typeof o['TOC'] === 'string' && o['TOC']) || undefined
+    const toc =
+      (typeof o['Toc'] === 'string' && o['Toc']) ||
+      (typeof o['TOC'] === 'string' && o['TOC']) ||
+      undefined
     const tiploc =
-      (typeof o['Tiploc'] === 'string' && o['Tiploc']) || (typeof o['TIPLOC'] === 'string' && o['TIPLOC']) || undefined
+      (typeof o['Tiploc'] === 'string' && o['Tiploc']) ||
+      (typeof o['TIPLOC'] === 'string' && o['TIPLOC']) ||
+      undefined
     const stanox =
-      (typeof o['Stanox'] === 'string' && o['Stanox']) || (typeof o['STANOX'] === 'string' && o['STANOX']) || undefined
+      (typeof o['Stanox'] === 'string' && o['Stanox']) ||
+      (typeof o['STANOX'] === 'string' && o['STANOX']) ||
+      undefined
 
     if (!code || !name) return null
-    return { code: String(code), name: String(name), toc: toc ? String(toc) : undefined, tiploc: tiploc ? String(tiploc) : undefined, stanox: stanox ? String(stanox) : undefined }
+    return {
+      code: String(code),
+      name: String(name),
+      toc: toc ? String(toc) : undefined,
+      tiploc: tiploc ? String(tiploc) : undefined,
+      stanox: stanox ? String(stanox) : undefined,
+    }
   }
 }
 

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Darwin Push Port broker: Kafka consumer (Confluent Cloud) + REST/WS for Railhopp",
-  "type": "module",
+  "type": "commonjs",
   "scripts": {
     "build": "tsc -p .",
     "start": "tsx src/index.ts",

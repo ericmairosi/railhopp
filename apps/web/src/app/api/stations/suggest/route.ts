@@ -3,10 +3,11 @@ import { getKnowledgeStationClient } from '@/lib/knowledge-station/client'
 import { getKnowledgebaseClient } from '@/lib/knowledgebase/client'
 import { CorpusClient } from '@/lib/network-rail/corpus-client'
 import { NetworkRailConfig } from '@/lib/network-rail/types'
+import { rateLimit } from '@/lib/rate-limit'
 
 declare global {
   // Global-cached Network Rail CORPUS client (server-only)
-  // eslint-disable-next-line no-var
+
   var __corpusClient: CorpusClient | undefined
 }
 
@@ -16,6 +17,32 @@ export async function GET(request: NextRequest) {
     const q = (searchParams.get('q') || '').trim()
     const limitRaw = searchParams.get('limit') || '10'
     const limit = Math.min(Math.max(parseInt(limitRaw, 10) || 10, 1), 25)
+
+    // Rate limit station suggestions per IP to prevent abuse
+    const rlCfg = {
+      keyPrefix: 'api:stations:suggest',
+      limit: parseInt(process.env.RATE_LIMIT_SUGGEST_PER_MIN || '30', 10),
+      windowSeconds: 60,
+    }
+    const rl = await rateLimit(request, rlCfg)
+    if (!rl.allowed) {
+      return new NextResponse(
+        JSON.stringify({
+          success: false,
+          error: { code: 'RATE_LIMITED', message: 'Too many requests' },
+        }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': '60',
+            'X-RateLimit-Limit': String(rlCfg.limit),
+            'X-RateLimit-Remaining': String(rl.remaining),
+            'X-RateLimit-Reset': rl.reset.toISOString(),
+          },
+        }
+      )
+    }
 
     if (!q || q.length < 2) {
       return NextResponse.json(
@@ -45,7 +72,12 @@ export async function GET(request: NextRequest) {
     const ks = getKnowledgeStationClient()
     if (ks.isEnabled()) {
       const results = await ks.searchStations({ query: q, limit })
-      return NextResponse.json({ success: true, data: results, source: 'knowledge-station', timestamp: new Date().toISOString() })
+      return NextResponse.json({
+        success: true,
+        data: results,
+        source: 'knowledge-station',
+        timestamp: new Date().toISOString(),
+      })
     }
 
     // Fallback to Network Rail CORPUS if configured (broad coverage of station names/CRS)
@@ -69,8 +101,10 @@ export async function GET(request: NextRequest) {
         if (corpus) {
           const stations = corpus
             .getPassengerStations()
-            .filter((s) =>
-              s.stationName.toLowerCase().includes(q.toLowerCase()) || s.crsCode.toLowerCase().includes(q.toLowerCase())
+            .filter(
+              (s) =>
+                s.stationName.toLowerCase().includes(q.toLowerCase()) ||
+                s.crsCode.toLowerCase().includes(q.toLowerCase())
             )
             .slice(0, limit)
             .map((s) => ({ code: s.crsCode, name: s.stationName }))
@@ -106,7 +140,7 @@ export async function GET(request: NextRequest) {
         success: false,
         error: {
           code: 'SERVICE_DISABLED',
-          message: 'No station suggestion service configured (Knowledgebase or Knowledge Station)'
+          message: 'No station suggestion service configured (Knowledgebase or Knowledge Station)',
         },
       },
       { status: 503 }

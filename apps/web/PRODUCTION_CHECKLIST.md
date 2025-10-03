@@ -63,13 +63,14 @@ Next.js 15.5.2 App Router
     └── cache.ts                # Caching system
 ```
 
-### **Darwin API Integration**
+### **Darwin Pub/Sub (Kafka) Integration**
 
-- **Token**: P-d3bf124c-1058-4040-8a62-87181a877d59 ✅
-- **Endpoint**: https://lite.realtime.nationalrail.co.uk/OpenLDBWS/ldb11.asmx
+- **Brokers**: Confluent Cloud bootstrap (e.g., pkc-z3plv0.europe-west2.gcp.confluent.cloud:9092)
+- **Auth**: SASL/SSL (PLAIN) with Confluent API key/secret
+- **Topic**: prod-1010-Darwin-Train-Information-Push-Port-...-JSON
 - **Compliance**: Full Rail Data Marketplace license compliance
-- **Rate Limiting**: 30-second cache prevents excessive calls
-- **Fallback**: Graceful degradation to mock data
+- **Rate Limiting**: API endpoints are rate-limited; caching reduces upstream load
+- **Fallback**: No mock fallback (clear error surfaces when unavailable)
 
 ### **Caching Strategy**
 

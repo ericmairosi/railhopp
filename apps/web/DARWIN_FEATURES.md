@@ -15,7 +15,7 @@ This document outlines the new enhanced features added to Railhopp that integrat
 
 **Key Features:**
 
-- Live data integration with P-d3bf124c-1058-4040-8a62-87181a877d59 Darwin token
+- Live data integration via Rail Data Marketplace Pub/Sub (Kafka)
 - Progressive disclosure for complex information
 - Accessibility-compliant design
 - Mobile-responsive layout
@@ -81,9 +81,10 @@ This document outlines the new enhanced features added to Railhopp that integrat
 ### Darwin API Integration
 
 - **Compliance**: Full compliance with Rail Data Marketplace terms
-- **Authentication**: Uses P-d3bf124c-1058-4040-8a62-87181a877d59 token
+- **Transport**: Pub/Sub via Kafka (Confluent Cloud)
+- **Auth**: SASL/SSL with Confluent API key/secret (username/password)
 - **Rate Limiting**: Respects API limits with smart caching
-- **Fallback Handling**: Graceful degradation when API unavailable
+- **Fallback Handling**: Clear errors when unavailable (no mock fallback)
 
 ### UI/UX Best Practices Applied
 

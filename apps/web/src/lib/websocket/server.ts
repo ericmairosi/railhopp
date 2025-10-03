@@ -70,7 +70,10 @@ class WebSocketManager {
         // Handle client messages
         ws.on('message', (message: unknown) => {
           try {
-            const text = typeof message === 'string' ? message : (message as { toString: () => string }).toString()
+            const text =
+              typeof message === 'string'
+                ? message
+                : (message as { toString: () => string }).toString()
             const parsed = JSON.parse(text) as { type?: string; stationCrs?: unknown }
             this.handleClientMessage(ws, parsed as ClientMessage)
           } catch (error) {

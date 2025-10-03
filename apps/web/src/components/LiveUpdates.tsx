@@ -13,7 +13,7 @@ import {
   WifiOff,
 } from 'lucide-react'
 
-interface NetworkAlert {
+type NetworkAlert = {
   id: string
   type: 'disruption' | 'delay' | 'cancellation' | 'info' | 'maintenance'
   severity: 'low' | 'medium' | 'high' | 'critical'
@@ -25,7 +25,7 @@ interface NetworkAlert {
   isActive: boolean
 }
 
-interface SystemStatus {
+type SystemStatus = {
   overall: 'operational' | 'degraded' | 'major_outage'
   lastUpdate: Date
   dataFeedStatus: {
@@ -46,75 +46,49 @@ export default function LiveUpdates() {
       networkRail: 'online',
       rtt: 'online',
     },
-    apiResponseTime: 245,
+    apiResponseTime: 250,
   })
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([])
 
-  // Mock alerts for demonstration
-  const mockAlerts: NetworkAlert[] = [
-    {
-      id: '1',
-      type: 'delay',
-      severity: 'medium',
-      title: 'Minor delays on West Coast Main Line',
-      description:
-        'Services between London Euston and Manchester are experiencing delays of up to 15 minutes due to earlier signal failure.',
-      affectedServices: ['Avanti West Coast', 'London Northwestern Railway'],
-      startTime: new Date(Date.now() - 45 * 60000), // 45 minutes ago
-      estimatedEnd: new Date(Date.now() + 30 * 60000), // 30 minutes from now
-      isActive: true,
-    },
-    {
-      id: '2',
-      type: 'maintenance',
-      severity: 'low',
-      title: 'Weekend engineering works',
-      description:
-        'Planned track maintenance between Reading and Swindon this weekend. Replacement bus services will operate.',
-      affectedServices: ['GWR'],
-      startTime: new Date(Date.now() + 2 * 24 * 60 * 60000), // 2 days from now
-      estimatedEnd: new Date(Date.now() + 3 * 24 * 60 * 60000), // 3 days from now
-      isActive: false,
-    },
-    {
-      id: '3',
-      type: 'info',
-      severity: 'low',
-      title: 'New timetable changes',
-      description:
-        'Updated timetables are now in effect for Northern Rail services across Yorkshire and Lancashire.',
-      affectedServices: ['Northern Rail'],
-      startTime: new Date(Date.now() - 2 * 60 * 60000), // 2 hours ago
-      isActive: true,
-    },
-  ]
+  // Load live disruptions (no mock fallback)
+  const loadDisruptions = async () => {
+    try {
+      const res = await fetch('/api/disruptions?severity=medium')
+      const json = await res.json()
+      if (json.success && json.data?.disruptions) {
+        const mapped: NetworkAlert[] = (json.data.disruptions as Array<any>).map((d) => ({
+          id: String(d.id),
+          type: 'disruption',
+          severity: (d.severity || 'medium') as NetworkAlert['severity'],
+          title: String(d.title || 'Network disruption'),
+          description: String(d.description || ''),
+          affectedServices: Array.isArray(d.affectedOperators) ? d.affectedOperators : [],
+          startTime: new Date(d.startTime || Date.now()),
+          estimatedEnd: d.endTime ? new Date(d.endTime) : undefined,
+          isActive: true,
+        }))
+        setAlerts(mapped)
+        setSystemStatus((prev) => ({ ...prev, lastUpdate: new Date() }))
+      } else {
+        setAlerts([])
+        setSystemStatus((prev) => ({ ...prev, lastUpdate: new Date() }))
+      }
+    } catch {
+      setAlerts([])
+      setSystemStatus((prev) => ({ ...prev, lastUpdate: new Date() }))
+    }
+  }
 
   useEffect(() => {
-    // Load mock alerts
-    setAlerts(mockAlerts)
-
-    // Set up periodic updates
-    const interval = setInterval(() => {
-      setSystemStatus((prev) => ({
-        ...prev,
-        lastUpdate: new Date(),
-        apiResponseTime: Math.floor(Math.random() * 200) + 150, // Random response time
-      }))
-    }, 30000) // Update every 30 seconds
-
+    loadDisruptions()
+    const interval = setInterval(loadDisruptions, 30000)
     return () => clearInterval(interval)
   }, [])
 
   const handleRefresh = async () => {
     setIsRefreshing(true)
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setSystemStatus((prev) => ({
-      ...prev,
-      lastUpdate: new Date(),
-      apiResponseTime: Math.floor(Math.random() * 200) + 150,
-    }))
+    await loadDisruptions()
     setIsRefreshing(false)
   }
 

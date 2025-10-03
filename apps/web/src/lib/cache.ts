@@ -59,16 +59,19 @@ class RedisCache {
     try {
       // Lazy require to avoid bundling on edge/client
       /* eslint-disable @typescript-eslint/no-require-imports */
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+
       const IORedis = require('ioredis')
       /* eslint-enable @typescript-eslint/no-require-imports */
       const options: Record<string, unknown> = { lazyConnect: true, maxRetriesPerRequest: 2 }
       if (token) options.password = token
       this.client = new IORedis(url, options)
       this.client.on('error', () => {})
-      this.client.connect().then(() => {
-        this.isReady = true
-      }).catch(() => {})
+      this.client
+        .connect()
+        .then(() => {
+          this.isReady = true
+        })
+        .catch(() => {})
     } catch {
       this.client = null
     }
@@ -132,9 +135,12 @@ const apiCache = {
 
 // Clean up expired entries every 5 minutes (memory only)
 if (typeof window === 'undefined') {
-  setInterval(() => {
-    apiCache.cleanup()
-  }, 5 * 60 * 1000)
+  setInterval(
+    () => {
+      apiCache.cleanup()
+    },
+    5 * 60 * 1000
+  )
 }
 
 export default apiCache

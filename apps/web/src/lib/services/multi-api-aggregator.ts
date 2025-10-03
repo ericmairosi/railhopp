@@ -94,7 +94,7 @@ export class MultiAPIAggregator {
   // Cache TTL (seconds)
   private readonly cacheTimeoutSec = (() => {
     const sec = parseInt(process.env.MULTI_API_AGGREGATOR_CACHE_TTL_SECONDS || '30', 10)
-    return (isNaN(sec) || sec <= 0 ? 30 : sec)
+    return isNaN(sec) || sec <= 0 ? 30 : sec
   })()
 
   /**
@@ -215,7 +215,8 @@ export class MultiAPIAggregator {
         } catch (error) {
           console.warn('Knowledge Station enhancement failed:', error)
           dataSources.failed.push('knowledge-station')
-          diagnostics.knowledgeStation.error = error instanceof Error ? error.message : String(error)
+          diagnostics.knowledgeStation.error =
+            error instanceof Error ? error.message : String(error)
         }
       }
 
@@ -234,7 +235,7 @@ export class MultiAPIAggregator {
         stationName,
         stationCode,
         departures: enhancedDepartures,
-        generatedAt: (darwinBoard?.generatedAt || new Date().toISOString()),
+        generatedAt: darwinBoard?.generatedAt || new Date().toISOString(),
         dataSources,
         stationInfo,
         disruptions,

@@ -38,8 +38,12 @@ class DarwinKafkaClient {
       password: process.env.DARWIN_KAFKA_PASSWORD || '',
       topic: process.env.DARWIN_KAFKA_TOPIC || '',
       groupId:
-        process.env.DARWIN_KAFKA_GROUP_ID || 'railhopp-darwin-consumer-' + (process.env.NODE_ENV || 'dev'),
-      saslMechanism: (process.env.DARWIN_KAFKA_SASL_MECHANISM || 'plain') as 'plain' | 'scram-sha-256' | 'scram-sha-512',
+        process.env.DARWIN_KAFKA_GROUP_ID ||
+        'railhopp-darwin-consumer-' + (process.env.NODE_ENV || 'dev'),
+      saslMechanism: (process.env.DARWIN_KAFKA_SASL_MECHANISM || 'plain') as
+        | 'plain'
+        | 'scram-sha-256'
+        | 'scram-sha-512',
       ssl: (process.env.DARWIN_KAFKA_SSL || 'true') !== 'false',
     }
   }
@@ -85,9 +89,7 @@ class DarwinKafkaClient {
     const caPath = process.env.DARWIN_KAFKA_CA_PATH
     if (cfg.ssl && caPath) {
       try {
-        const full = path.isAbsolute(caPath)
-          ? caPath
-          : path.join(process.cwd(), caPath)
+        const full = path.isAbsolute(caPath) ? caPath : path.join(process.cwd(), caPath)
         const ca = fs.readFileSync(full, 'utf-8')
         ssl = { ca: [ca] }
       } catch (e) {
@@ -139,7 +141,9 @@ class DarwinKafkaClient {
             if (raw) {
               const json = JSON.parse(raw)
               for (const h of this.handlers) {
-                try { h(json) } catch {}
+                try {
+                  h(json)
+                } catch {}
               }
             }
           } catch (e) {

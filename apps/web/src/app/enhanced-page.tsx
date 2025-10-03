@@ -252,7 +252,7 @@ export default function EnhancedRailhoppHome() {
                 <div className="flex justify-center">
                   <button
                     onClick={handleSwapStations}
-                    className="rounded-full bg-slate-100 p-3 transition-all hover:bg-slate-200 hover:scale-105 disabled:opacity-50"
+                    className="rounded-full bg-slate-100 p-3 transition-all hover:scale-105 hover:bg-slate-200 disabled:opacity-50"
                     disabled={!selectedFromStation && !selectedToStation}
                   >
                     <ArrowLeftRight className="h-5 w-5 text-slate-600" />
@@ -301,7 +301,9 @@ export default function EnhancedRailhoppHome() {
                 </div>
 
                 <div>
-                  <label className="mb-3 block text-sm font-semibold text-slate-700">Passengers</label>
+                  <label className="mb-3 block text-sm font-semibold text-slate-700">
+                    Passengers
+                  </label>
                   <select
                     value={passengers}
                     onChange={(e) => setPassengers(e.target.value)}
@@ -317,7 +319,7 @@ export default function EnhancedRailhoppHome() {
                 <button
                   onClick={handleJourneySearch}
                   disabled={!selectedFromStation || !selectedToStation}
-                  className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 py-4 px-8 text-lg font-semibold text-white transition-all hover:from-blue-700 hover:to-blue-800 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:shadow-none"
+                  className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-4 text-lg font-semibold text-white transition-all hover:from-blue-700 hover:to-blue-800 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:shadow-none"
                 >
                   <Search className="h-5 w-5" />
                   Search Trains

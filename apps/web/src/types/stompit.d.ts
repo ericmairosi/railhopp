@@ -6,10 +6,7 @@ declare module 'stompit' {
   }
 
   export type Message = {
-    readString: (
-      encoding: string,
-      callback: (error: unknown, body: string) => void
-    ) => void
+    readString: (encoding: string, callback: (error: unknown, body: string) => void) => void
     ack: () => void
   }
 

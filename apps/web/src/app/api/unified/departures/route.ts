@@ -8,10 +8,18 @@ import { rateLimit } from '@/lib/rate-limit'
 export async function GET(request: NextRequest) {
   try {
     // Rate limit: 60 requests per 60 seconds per IP for unified departures
-    const rl = await rateLimit(request, { keyPrefix: 'rl:unified:departures', limit: 60, windowSeconds: 60 })
+    const rl = await rateLimit(request, {
+      keyPrefix: 'rl:unified:departures',
+      limit: 60,
+      windowSeconds: 60,
+    })
     if (!rl.allowed) {
       return NextResponse.json(
-        { success: false, error: { code: 'RATE_LIMITED', message: 'Too many requests. Please try again later.' }, retryAfter: rl.reset.toISOString() },
+        {
+          success: false,
+          error: { code: 'RATE_LIMITED', message: 'Too many requests. Please try again later.' },
+          retryAfter: rl.reset.toISOString(),
+        },
         { status: 429 }
       )
     }

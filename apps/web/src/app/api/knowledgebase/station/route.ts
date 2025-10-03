@@ -17,7 +17,10 @@ export async function GET(request: NextRequest) {
     const kb = getKnowledgebaseClient()
     if (!kb.isEnabled()) {
       return NextResponse.json(
-        { success: false, error: { code: 'SERVICE_DISABLED', message: 'Knowledgebase is not configured' } },
+        {
+          success: false,
+          error: { code: 'SERVICE_DISABLED', message: 'Knowledgebase is not configured' },
+        },
         { status: 503 }
       )
     }
@@ -39,7 +42,10 @@ export async function GET(request: NextRequest) {
         error: {
           code: 'INTERNAL_ERROR',
           message: 'Failed to fetch station details',
-          details: process.env.NODE_ENV === 'development' ? String((error as Error)?.message || error) : undefined,
+          details:
+            process.env.NODE_ENV === 'development'
+              ? String((error as Error)?.message || error)
+              : undefined,
         },
       },
       { status: 500 }

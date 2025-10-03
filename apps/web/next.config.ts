@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Temporarily disable standalone mode to fix deployment
+  // Enable standalone mode for lean Docker runtime (disabled for Windows build)
   // output: 'standalone',
   // Compress responses for better performance
   compress: true,
@@ -23,4 +23,4 @@ const nextConfig: NextConfig = {
   // Keep server-side rendering for API routes and real-time features
 }
 
-export default withSentryConfig(nextConfig, { silent: true }, { autoInstrumentServerFunctions: true })
+export default withSentryConfig(nextConfig, { silent: true })

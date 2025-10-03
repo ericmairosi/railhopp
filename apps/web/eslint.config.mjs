@@ -23,8 +23,18 @@ const eslintConfig = [
   {
     rules: {
       "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-unused-vars": ["warn", { args: "none", ignoreRestSiblings: true }],
+      "@typescript-eslint/no-require-imports": "off",
       "react/no-unescaped-entities": "warn",
     },
+  },
+  {
+    ignores: [
+      "**/test-*.js",
+      "**/*.spec.*",
+      "**/*.test.*",
+      "**/debug-*.js",
+    ],
   },
 ];
 

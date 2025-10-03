@@ -6,6 +6,7 @@ kill_timeout = "5s"
 
 [build]
   dockerfile = "Dockerfile"
+context = "apps/darwin-broker"
 
 [env]
   PORT = "4001"

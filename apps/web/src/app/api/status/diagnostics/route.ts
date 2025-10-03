@@ -32,8 +32,7 @@ export async function GET(request: NextRequest) {
         success: true,
         diagnostics: null,
         summary: null,
-        note:
-          'No diagnostics available yet. Trigger an aggregation via /api/unified/departures or /api/v2/departures first.',
+        note: 'No diagnostics available yet. Trigger an aggregation via /api/unified/departures or /api/v2/departures first.',
         timestamp: new Date().toISOString(),
       })
     }
@@ -65,8 +64,7 @@ export async function GET(request: NextRequest) {
           (perSource.knowledgeStation.attempted ? 1 : 0),
         available: perSource.darwin.available ? 1 : 0,
         enhanced:
-          (perSource.networkRail.enhanced ? 1 : 0) +
-          (perSource.knowledgeStation.enhanced ? 1 : 0),
+          (perSource.networkRail.enhanced ? 1 : 0) + (perSource.knowledgeStation.enhanced ? 1 : 0),
         failed:
           (perSource.darwin.failed ? 1 : 0) +
           (perSource.networkRail.failed ? 1 : 0) +

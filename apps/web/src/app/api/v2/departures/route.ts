@@ -8,6 +8,7 @@ import { DarwinAPIError } from '@/lib/darwin/types'
 import { NetworkRailAPIError } from '@/lib/network-rail/types'
 import { KnowledgeStationAPIError } from '@/lib/knowledge-station/types'
 import { NationalRailAPIError } from '@/lib/national-rail/types'
+import { rateLimit } from '@/lib/rate-limit'
 
 export async function GET(request: NextRequest) {
   try {
@@ -47,6 +48,32 @@ export async function GET(request: NextRequest) {
           },
         },
         { status: 400 }
+      )
+    }
+
+    // Rate limit per IP per CRS to protect upstream APIs
+    const limit = parseInt(process.env.RATE_LIMIT_DEPARTURES_PER_MIN || '60', 10)
+    const rl = await rateLimit(request, {
+      keyPrefix: `api:v2:departures:${crs.toUpperCase()}`,
+      limit,
+      windowSeconds: 60,
+    })
+    if (!rl.allowed) {
+      return new NextResponse(
+        JSON.stringify({
+          success: false,
+          error: { code: 'RATE_LIMITED', message: 'Too many requests' },
+        }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': '60',
+            'X-RateLimit-Limit': String(limit),
+            'X-RateLimit-Remaining': String(rl.remaining),
+            'X-RateLimit-Reset': rl.reset.toISOString(),
+          },
+        }
       )
     }
 

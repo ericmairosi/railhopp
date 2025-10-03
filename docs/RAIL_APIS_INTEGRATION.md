@@ -1,5 +1,7 @@
 # UK Rail APIs - Full Integration Guide
 
+Note: Darwin is integrated via Pub/Sub broker only. Legacy SOAP/STOMP clients have been removed for a lighter, faster app. No mock data fallbacks are used — real APIs must be configured.
+
 ## Available UK Rail Data APIs
 
 ### 🚂 Primary Data Sources

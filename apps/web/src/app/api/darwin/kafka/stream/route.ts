@@ -49,7 +49,9 @@ export async function GET(_req: NextRequest) {
   }
 
   // Subscribe to cache and push live events
-  const unsubscribe = cache.subscribe((evt: { type: 'service_update'; data: ServiceUpdate }) => send('service_update', evt.data))
+  const unsubscribe = cache.subscribe((evt: { type: 'service_update'; data: ServiceUpdate }) =>
+    send('service_update', evt.data)
+  )
 
   // Initial handshake + snapshot
   comment('connected')
@@ -67,7 +69,9 @@ export async function GET(_req: NextRequest) {
   const response = new Response(stream, { headers })
 
   // When the client disconnects, clear interval + unsubscribe.
-  const respWithSocket = response as unknown as { socket?: { on: (event: 'close', cb: () => void) => void } }
+  const respWithSocket = response as unknown as {
+    socket?: { on: (event: 'close', cb: () => void) => void }
+  }
   respWithSocket.socket?.on('close', () => {
     clearInterval(hb)
     unsubscribe()

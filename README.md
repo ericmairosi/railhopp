@@ -186,7 +186,7 @@ Multi-layer caching for optimal performance:
 
 ### Environment Variables
 
-Required for production:
+Required for production (no hardcoded secrets; use your platform's secret store):
 
 ```bash
 # Supabase
@@ -194,14 +194,46 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 
-# National Rail APIs
-DARWIN_API_KEY=
-NETWORK_RAIL_USERNAME=
-NETWORK_RAIL_PASSWORD=
+# Darwin Kafka (Pub/Sub)
+# Backed by Rail Data Marketplace (Confluent) – used for SSE live updates
+DARWIN_KAFKA_BROKERS=pkc-xxxxx.gcp.confluent.cloud:9092
+DARWIN_KAFKA_USERNAME={{DARWIN_KAFKA_USERNAME}}
+DARWIN_KAFKA_PASSWORD={{DARWIN_KAFKA_PASSWORD}}
+DARWIN_KAFKA_TOPIC=prod-1010-Darwin-Train-Information-Push-Port-...-JSON
+DARWIN_KAFKA_GROUP_ID=railhopp-darwin
+DARWIN_KAFKA_SASL_MECHANISM=plain
+DARWIN_KAFKA_SSL=true
 
-# Redis (Upstash)
-REDIS_URL=
-REDIS_TOKEN=
+# Optional HTTP broker bridge (if you run one)
+DARWIN_ENABLED=true
+DARWIN_BROKER_URL=https://your-broker.example.com   # e.g., http://localhost:4001
+
+# Knowledgebase (RDM)
+KNOWLEDGEBASE_API_URL={{KNOWLEDGEBASE_API_URL}}
+KNOWLEDGEBASE_API_KEY={{KNOWLEDGEBASE_API_KEY}}
+
+# Knowledge Station (RTT.io) – optional
+KNOWLEDGE_STATION_API_URL={{KNOWLEDGE_STATION_API_URL}}
+KNOWLEDGE_STATION_API_TOKEN={{KNOWLEDGE_STATION_API_TOKEN}}
+KNOWLEDGE_STATION_ENABLED=true
+
+# Network Rail (optional)
+NETWORK_RAIL_API_URL={{NETWORK_RAIL_API_URL}}
+NETWORK_RAIL_USERNAME={{NETWORK_RAIL_USERNAME}}
+NETWORK_RAIL_PASSWORD={{NETWORK_RAIL_PASSWORD}}
+
+# Redis (ioredis)
+REDIS_URL={{REDIS_URL}}
+REDIS_TOKEN={{REDIS_TOKEN}}
+
+# Sentry (optional but recommended)
+SENTRY_DSN={{SENTRY_DSN}}
+SENTRY_ENVIRONMENT=production
+
+# Rate limits (defaults provided)
+RATE_LIMIT_DEPARTURES_PER_MIN=60
+RATE_LIMIT_SUGGEST_PER_MIN=30
+RATE_LIMIT_JOURNEY_PER_MIN=20
 
 # Application
 NEXT_PUBLIC_APP_URL=https://railhopp.com

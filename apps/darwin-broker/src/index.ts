@@ -11,7 +11,7 @@ import cors from 'cors'
 import { Kafka, logLevel } from 'kafkajs'
 import pino from 'pino'
 import { WebSocketServer } from 'ws'
-import { mapTiplocToCrs } from './tiploc-crs'
+import { mapTiplocToCrs } from './tiploc-crs.js'
 
 // Env
 const PORT = parseInt(process.env.BROKER_PORT || '4001', 10)
@@ -44,7 +44,6 @@ const wsClients = new Set<any>()
 
 // Persist map on updates (debounced)
 import fs from 'fs'
-import path from 'path'
 let pendingSave = false
 function saveMapDebounced() {
   if (pendingSave) return
@@ -79,8 +78,7 @@ async function resolveCrsFromTiploc(tpl?: string): Promise<string | null> {
     const u = `${CORPUS_LOOKUP_URL}?tpl=${encodeURIComponent(key)}`
     const res = await fetch(u, {
       headers: { 'x-internal-token': INTERNAL_TOKEN },
-      timeout: 10000 as any,
-    })
+    } as any)
     if (!res.ok) return null
     const json: any = await res.json()
     const crs: string | null = json?.crs || null

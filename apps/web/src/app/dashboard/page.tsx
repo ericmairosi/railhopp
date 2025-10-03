@@ -118,10 +118,18 @@ export default function DashboardPage() {
       if (json?.success) {
         setPubSubStatus(json.data)
       } else {
-        setPubSubStatus({ enabled: false, ok: false, cache: { totalServices: 0, lastUpdate: null, cacheAge: null } })
+        setPubSubStatus({
+          enabled: false,
+          ok: false,
+          cache: { totalServices: 0, lastUpdate: null, cacheAge: null },
+        })
       }
     } catch {
-      setPubSubStatus({ enabled: false, ok: false, cache: { totalServices: 0, lastUpdate: null, cacheAge: null } })
+      setPubSubStatus({
+        enabled: false,
+        ok: false,
+        cache: { totalServices: 0, lastUpdate: null, cacheAge: null },
+      })
     }
   }
 
@@ -279,22 +287,30 @@ export default function DashboardPage() {
                     className={`inline-block h-2 w-2 rounded-full ${pubSubStatus?.ok ? 'bg-green-500' : 'bg-red-500'}`}
                     aria-hidden
                   />
-                  <span className="text-gray-600">{pubSubStatus?.ok ? 'Connected' : 'Unavailable'}</span>
+                  <span className="text-gray-600">
+                    {pubSubStatus?.ok ? 'Connected' : 'Unavailable'}
+                  </span>
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>
                   <div className="text-sm text-gray-500">Enabled</div>
-                  <div className="text-base font-semibold text-gray-900">{pubSubStatus?.enabled ? 'Yes' : 'No'}</div>
+                  <div className="text-base font-semibold text-gray-900">
+                    {pubSubStatus?.enabled ? 'Yes' : 'No'}
+                  </div>
                 </div>
                 <div>
                   <div className="text-sm text-gray-500">Cached Services</div>
-                  <div className="text-base font-semibold text-gray-900">{pubSubStatus?.cache?.totalServices ?? 0}</div>
+                  <div className="text-base font-semibold text-gray-900">
+                    {pubSubStatus?.cache?.totalServices ?? 0}
+                  </div>
                 </div>
                 <div>
                   <div className="text-sm text-gray-500">Last Update</div>
                   <div className="text-base font-semibold text-gray-900">
-                    {pubSubStatus?.cache?.lastUpdate ? new Date(pubSubStatus.cache.lastUpdate).toLocaleTimeString() : 'N/A'}
+                    {pubSubStatus?.cache?.lastUpdate
+                      ? new Date(pubSubStatus.cache.lastUpdate).toLocaleTimeString()
+                      : 'N/A'}
                   </div>
                 </div>
               </div>

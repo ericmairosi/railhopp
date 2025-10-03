@@ -26,8 +26,7 @@ async function main() {
   console.log('Fetching CORPUS from', url)
   const res = await fetch(url, {
     headers: { Authorization: `Basic ${auth}` },
-    timeout: 60000 as any,
-  })
+  } as any)
   if (!res.ok) {
     const text = await res.text()
     throw new Error(`CORPUS HTTP ${res.status} ${res.statusText}: ${text.slice(0, 200)}`)

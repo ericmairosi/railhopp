@@ -195,9 +195,7 @@ export default function StationSearch({
 
       {showSuggestions && (
         <div className="absolute left-0 right-0 z-[60] mt-1 max-h-72 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
-          {loading && (
-            <div className="p-3 text-center text-xs text-slate-500">Searching…</div>
-          )}
+          {loading && <div className="p-3 text-center text-xs text-slate-500">Searching…</div>}
           {!loading && suggestions.length === 0 && (
             <div className="p-3 text-center text-xs text-slate-500">No matches</div>
           )}
@@ -219,12 +217,12 @@ export default function StationSearch({
               >
                 <MapPin size={14} className="text-slate-400" />
                 <div className="flex-1">
-                  <div className={`font-medium ${selectedIndex === index ? 'text-blue-600' : 'text-slate-900'}`}>
+                  <div
+                    className={`font-medium ${selectedIndex === index ? 'text-blue-600' : 'text-slate-900'}`}
+                  >
                     {station.name}
                   </div>
-                  <div className="mt-0.5 text-xs text-slate-500">
-                    {station.code}
-                  </div>
+                  <div className="mt-0.5 text-xs text-slate-500">{station.code}</div>
                 </div>
               </div>
             ))}

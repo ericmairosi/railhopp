@@ -11,7 +11,7 @@ fi
 CMD="${1:-}"
 case "$CMD" in
   deploy)
-    fly deploy -c "$CONFIG_PATH"
+    fly deploy apps/darwin-broker
     ;;
   logs)
     fly logs -c "$CONFIG_PATH"

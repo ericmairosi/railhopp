@@ -10,11 +10,11 @@ function loadExternalMap(): Record<string, string> {
   try {
     const p = path.resolve(process.cwd(), 'data', 'tiploc-to-crs.json')
     const raw = fs.readFileSync(p, 'utf8')
-    LOADED_MAP = JSON.parse(raw)
+    LOADED_MAP = JSON.parse(raw) as Record<string, string>
     return LOADED_MAP
   } catch {
-    LOADED_MAP = null
-    return {}
+    LOADED_MAP = {}
+    return LOADED_MAP
   }
 }
 

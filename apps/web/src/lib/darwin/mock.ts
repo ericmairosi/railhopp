@@ -105,7 +105,7 @@ export function generateMockStationBoard(
     generatedAt: new Date().toISOString(),
     departures,
     messages,
-    platformsAvailable: true
+    platformsAvailable: true,
   }
 }
 
@@ -127,21 +127,15 @@ export function generateMockServiceDetails(serviceId: string): TrainServiceDetai
 
   const previousCallingPoints = [
     {
-      callingPoint: callingStations
-        .slice(0, Math.floor(numStops / 2))
-        .map((station, index) => ({
-          locationName: station.name,
-          crs: station.code,
-          st: new Date(Date.now() - (numStops - index) * 15 * 60000)
-            .toTimeString()
-            .slice(0, 5),
-          at: new Date(
-            Date.now() - (numStops - index) * 15 * 60000 + Math.random() * 5 * 60000
-          )
-            .toTimeString()
-            .slice(0, 5),
-          isCancelled: false,
-        })),
+      callingPoint: callingStations.slice(0, Math.floor(numStops / 2)).map((station, index) => ({
+        locationName: station.name,
+        crs: station.code,
+        st: new Date(Date.now() - (numStops - index) * 15 * 60000).toTimeString().slice(0, 5),
+        at: new Date(Date.now() - (numStops - index) * 15 * 60000 + Math.random() * 5 * 60000)
+          .toTimeString()
+          .slice(0, 5),
+        isCancelled: false,
+      })),
     },
   ]
 
@@ -172,7 +166,10 @@ export function generateMockServiceDetails(serviceId: string): TrainServiceDetai
     delayReason: delayMinutes > 5 ? 'Due to earlier network congestion' : undefined,
     cancelReason: isCancelled ? 'Due to a signalling problem' : undefined,
     origin: [
-      { locationName: callingStations[0]?.name || 'Origin', crs: callingStations[0]?.code || 'OR1' },
+      {
+        locationName: callingStations[0]?.name || 'Origin',
+        crs: callingStations[0]?.code || 'OR1',
+      },
     ],
     destination: [
       {

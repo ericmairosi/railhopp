@@ -22,7 +22,10 @@ class MemoryCounter {
 
 let memoryCounter: MemoryCounter | null = null
 
-async function redisConsume(key: string, windowSeconds: number): Promise<{ count: number; resetAt: number } | null> {
+async function redisConsume(
+  key: string,
+  windowSeconds: number
+): Promise<{ count: number; resetAt: number } | null> {
   if (typeof window !== 'undefined') return null
   const url = process.env.REDIS_URL
   if (!url) return null
@@ -30,7 +33,11 @@ async function redisConsume(key: string, windowSeconds: number): Promise<{ count
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const IORedis = require('ioredis')
-    const client = new IORedis(url, { lazyConnect: true, maxRetriesPerRequest: 2, password: process.env.REDIS_TOKEN })
+    const client = new IORedis(url, {
+      lazyConnect: true,
+      maxRetriesPerRequest: 2,
+      password: process.env.REDIS_TOKEN,
+    })
     await client.connect()
     const pttl = await client.pttl(key)
     const multi = client.multi()
@@ -50,11 +57,7 @@ async function redisConsume(key: string, windowSeconds: number): Promise<{ count
 
 export async function rateLimit(
   request: NextRequest,
-  {
-    keyPrefix,
-    limit,
-    windowSeconds,
-  }: { keyPrefix: string; limit: number; windowSeconds: number }
+  { keyPrefix, limit, windowSeconds }: { keyPrefix: string; limit: number; windowSeconds: number }
 ): Promise<{ allowed: boolean; remaining: number; reset: Date }> {
   const forwarded = request.headers.get('x-forwarded-for') || ''
   const ip = forwarded.split(',')[0]?.trim() || 'unknown'
@@ -71,5 +74,9 @@ export async function rateLimit(
   // Fallback to in-memory counter
   if (!memoryCounter) memoryCounter = new MemoryCounter()
   const mem = memoryCounter.consume(key, windowSeconds)
-  return { allowed: mem.count <= limit, remaining: Math.max(0, limit - mem.count), reset: new Date(mem.resetAt) }
+  return {
+    allowed: mem.count <= limit,
+    remaining: Math.max(0, limit - mem.count),
+    reset: new Date(mem.resetAt),
+  }
 }

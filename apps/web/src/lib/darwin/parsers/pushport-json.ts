@@ -27,7 +27,15 @@ export function extractServiceUpdates(msg: any): ServiceUpdate[] {
     const operator = msg.operator || msg.operatorName
 
     if (serviceId) {
-      maybePush({ serviceId, scheduledDeparture: std, estimatedDeparture: etd, platform, cancelled, delayReason, operator })
+      maybePush({
+        serviceId,
+        scheduledDeparture: std,
+        estimatedDeparture: etd,
+        platform,
+        cancelled,
+        delayReason,
+        operator,
+      })
     }
 
     // Nested TS or Location forms
@@ -39,7 +47,12 @@ export function extractServiceUpdates(msg: any): ServiceUpdate[] {
       const etd2 = loc?.etd || loc?.atd || loc?.estimatedDeparture
       const plat2 = loc?.plat || loc?.platform
       if (rid) {
-        maybePush({ serviceId: rid, scheduledDeparture: ptd, estimatedDeparture: etd2, platform: plat2 })
+        maybePush({
+          serviceId: rid,
+          scheduledDeparture: ptd,
+          estimatedDeparture: etd2,
+          platform: plat2,
+        })
       }
     }
   }

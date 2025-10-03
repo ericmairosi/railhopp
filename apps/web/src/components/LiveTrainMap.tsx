@@ -94,7 +94,7 @@ export default function LiveTrainMap({
     for (let i = 0; i < 12; i++) {
       const route = routes[i % routes.length]
       const operator = operators[i % operators.length]
-      
+
       mockTrains.push({
         id: `train_${i + 1}`,
         headcode: `${route.headcode}${String(i + 1).padStart(2, '0')}`,
@@ -132,10 +132,17 @@ export default function LiveTrainMap({
 
   const generateMockStations = (): Station[] => {
     const stationNames = [
-      'King\'s Cross', 'Euston', 'Paddington', 'Victoria', 'Waterloo',
-      'Liverpool St', 'London Bridge', 'Clapham Junction', 'Stratford'
+      "King's Cross",
+      'Euston',
+      'Paddington',
+      'Victoria',
+      'Waterloo',
+      'Liverpool St',
+      'London Bridge',
+      'Clapham Junction',
+      'Stratford',
     ]
-    
+
     return stationNames.map((name, i) => ({
       id: `station_${i}`,
       name,
@@ -158,13 +165,17 @@ export default function LiveTrainMap({
     if (autoRefresh) {
       const interval = setInterval(() => {
         // Update train positions
-        setTrains(prev => prev.map(train => ({
-          ...train,
-          x: train.x + (Math.random() - 0.5) * 5,
-          y: train.y + (Math.random() - 0.5) * 5,
-          speed: Math.max(0, train.speed + (Math.random() - 0.5) * 10),
-          status: (['moving', 'stopped', 'approaching', 'delayed'] as const)[Math.floor(Math.random() * 4)],
-        })))
+        setTrains((prev) =>
+          prev.map((train) => ({
+            ...train,
+            x: train.x + (Math.random() - 0.5) * 5,
+            y: train.y + (Math.random() - 0.5) * 5,
+            speed: Math.max(0, train.speed + (Math.random() - 0.5) * 10),
+            status: (['moving', 'stopped', 'approaching', 'delayed'] as const)[
+              Math.floor(Math.random() * 4)
+            ],
+          }))
+        )
         setLastUpdate(new Date())
       }, 5000)
 
@@ -204,16 +215,23 @@ export default function LiveTrainMap({
 
   const getSignalColor = (signal: Signal) => {
     switch (signal.aspect) {
-      case 'red': return '#dc2626'
-      case 'yellow': return '#ca8a04'
-      case 'green': return '#16a34a'
-      default: return '#6b7280'
+      case 'red':
+        return '#dc2626'
+      case 'yellow':
+        return '#ca8a04'
+      case 'green':
+        return '#16a34a'
+      default:
+        return '#6b7280'
     }
   }
 
   if (loading) {
     return (
-      <div className={`flex items-center justify-center bg-slate-100 ${className}`} style={{ height }}>
+      <div
+        className={`flex items-center justify-center bg-slate-100 ${className}`}
+        style={{ height }}
+      >
         <div className="text-center">
           <RefreshCw className="mx-auto mb-2 h-8 w-8 animate-spin text-blue-600" />
           <p className="text-sm text-slate-600">Loading live map...</p>
@@ -223,18 +241,20 @@ export default function LiveTrainMap({
   }
 
   return (
-    <div className={`relative overflow-hidden rounded-xl border border-slate-200 bg-white ${className}`}>
+    <div
+      className={`relative overflow-hidden rounded-xl border border-slate-200 bg-white ${className}`}
+    >
       {/* Map Controls */}
-      <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
+      <div className="absolute left-4 top-4 z-10 flex flex-col gap-2">
         <button
-          onClick={() => setZoom(prev => Math.min(prev + 0.2, 3))}
+          onClick={() => setZoom((prev) => Math.min(prev + 0.2, 3))}
           className="rounded-lg bg-white p-2 shadow-md transition-colors hover:bg-slate-50"
           title="Zoom In"
         >
           <ZoomIn className="h-4 w-4" />
         </button>
         <button
-          onClick={() => setZoom(prev => Math.max(prev - 0.2, 0.5))}
+          onClick={() => setZoom((prev) => Math.max(prev - 0.2, 0.5))}
           className="rounded-lg bg-white p-2 shadow-md transition-colors hover:bg-slate-50"
           title="Zoom Out"
         >
@@ -250,15 +270,13 @@ export default function LiveTrainMap({
       </div>
 
       {/* Map Info */}
-      <div className="absolute top-4 right-4 z-10 rounded-lg bg-white p-3 shadow-md">
+      <div className="absolute right-4 top-4 z-10 rounded-lg bg-white p-3 shadow-md">
         <div className="flex items-center gap-2">
           <div className="h-2 w-2 animate-pulse rounded-full bg-green-500"></div>
           <span className="text-sm font-medium">Live Map</span>
         </div>
         {lastUpdate && (
-          <p className="text-xs text-slate-500">
-            Updated: {lastUpdate.toLocaleTimeString()}
-          </p>
+          <p className="text-xs text-slate-500">Updated: {lastUpdate.toLocaleTimeString()}</p>
         )}
       </div>
 
@@ -277,7 +295,7 @@ export default function LiveTrainMap({
         {/* Grid Background */}
         <defs>
           <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e2e8f0" strokeWidth="1"/>
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e2e8f0" strokeWidth="1" />
           </pattern>
         </defs>
         <rect width="100%" height="100%" fill="url(#grid)" />
@@ -290,59 +308,61 @@ export default function LiveTrainMap({
         </g>
 
         {/* Stations */}
-        {showStations && stations.map((station) => (
-          <g key={station.id} className="station">
-            <circle
-              cx={station.x}
-              cy={station.y}
-              r={station.isJunction ? 12 : 8}
-              fill="#1e293b"
-              stroke="#ffffff"
-              strokeWidth="2"
-            />
-            <text
-              x={station.x}
-              y={station.y - 16}
-              textAnchor="middle"
-              fontSize="10"
-              fill="#1e293b"
-              fontWeight="bold"
-            >
-              {station.name}
-            </text>
-            <text
-              x={station.x}
-              y={station.y + 25}
-              textAnchor="middle"
-              fontSize="8"
-              fill="#64748b"
-            >
-              {station.platforms} platforms
-            </text>
-          </g>
-        ))}
+        {showStations &&
+          stations.map((station) => (
+            <g key={station.id} className="station">
+              <circle
+                cx={station.x}
+                cy={station.y}
+                r={station.isJunction ? 12 : 8}
+                fill="#1e293b"
+                stroke="#ffffff"
+                strokeWidth="2"
+              />
+              <text
+                x={station.x}
+                y={station.y - 16}
+                textAnchor="middle"
+                fontSize="10"
+                fill="#1e293b"
+                fontWeight="bold"
+              >
+                {station.name}
+              </text>
+              <text
+                x={station.x}
+                y={station.y + 25}
+                textAnchor="middle"
+                fontSize="8"
+                fill="#64748b"
+              >
+                {station.platforms} platforms
+              </text>
+            </g>
+          ))}
 
         {/* Signals */}
-        {showSignals && signals.map((signal) => (
-          <g key={signal.id} className="signal">
-            <rect
-              x={signal.x - 3}
-              y={signal.y - 8}
-              width="6"
-              height="16"
-              fill={getSignalColor(signal)}
-              rx="2"
-            />
-            <circle
-              cx={signal.x}
-              cy={signal.y}
-              r="4"
-              fill={getSignalColor(signal)}
-              stroke="#ffffff"
-              strokeWidth="1"
-            />
-          </g>
-        ))}
+        {showSignals &&
+          signals.map((signal) => (
+            <g key={signal.id} className="signal">
+              <rect
+                x={signal.x - 3}
+                y={signal.y - 8}
+                width="6"
+                height="16"
+                fill={getSignalColor(signal)}
+                rx="2"
+              />
+              <circle
+                cx={signal.x}
+                cy={signal.y}
+                r="4"
+                fill={getSignalColor(signal)}
+                stroke="#ffffff"
+                strokeWidth="1"
+              />
+            </g>
+          ))}
 
         {/* Trains */}
         {trains.map((train) => (
@@ -362,19 +382,9 @@ export default function LiveTrainMap({
               strokeWidth="1"
               rx="2"
             />
-            <polygon
-              points="8,-2 12,0 8,2"
-              fill={getTrainColor(train)}
-            />
+            <polygon points="8,-2 12,0 8,2" fill={getTrainColor(train)} />
             {train.speed > 0 && (
-              <text
-                x="0"
-                y="12"
-                textAnchor="middle"
-                fontSize="8"
-                fill="#374151"
-                fontWeight="bold"
-              >
+              <text x="0" y="12" textAnchor="middle" fontSize="8" fill="#374151" fontWeight="bold">
                 {train.headcode}
               </text>
             )}
@@ -396,7 +406,7 @@ export default function LiveTrainMap({
               ×
             </button>
           </div>
-          
+
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-slate-600">Route:</span>
@@ -404,24 +414,29 @@ export default function LiveTrainMap({
                 {selectedTrain.origin} → {selectedTrain.destination}
               </span>
             </div>
-            
+
             <div className="flex justify-between">
               <span className="text-slate-600">Speed:</span>
               <span className="font-medium">{Math.round(selectedTrain.speed)} mph</span>
             </div>
-            
+
             <div className="flex justify-between">
               <span className="text-slate-600">Status:</span>
-              <span className={`font-medium ${
-                selectedTrain.delayed ? 'text-red-600' : 
-                selectedTrain.status === 'stopped' ? 'text-orange-600' : 
-                'text-green-600'
-              }`}>
-                {selectedTrain.delayed ? 'Delayed' : 
-                 selectedTrain.status.charAt(0).toUpperCase() + selectedTrain.status.slice(1)}
+              <span
+                className={`font-medium ${
+                  selectedTrain.delayed
+                    ? 'text-red-600'
+                    : selectedTrain.status === 'stopped'
+                      ? 'text-orange-600'
+                      : 'text-green-600'
+                }`}
+              >
+                {selectedTrain.delayed
+                  ? 'Delayed'
+                  : selectedTrain.status.charAt(0).toUpperCase() + selectedTrain.status.slice(1)}
               </span>
             </div>
-            
+
             <div className="flex justify-between">
               <span className="text-slate-600">Next Station:</span>
               <span className="font-medium">{selectedTrain.nextStation}</span>
@@ -435,8 +450,8 @@ export default function LiveTrainMap({
             )}
           </div>
 
-          <div className="mt-3 pt-3 border-t border-slate-200">
-            <button className="text-blue-600 text-sm font-medium hover:text-blue-700">
+          <div className="mt-3 border-t border-slate-200 pt-3">
+            <button className="text-sm font-medium text-blue-600 hover:text-blue-700">
               View Service Details →
             </button>
           </div>

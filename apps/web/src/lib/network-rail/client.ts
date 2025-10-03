@@ -281,9 +281,14 @@ export class NetworkRailClient {
         return null
       }
 
-      const getString = (v: unknown, fallback = ''): string => (typeof v === 'string' ? v : fallback)
+      const getString = (v: unknown, fallback = ''): string =>
+        typeof v === 'string' ? v : fallback
       const getNumber = (v: unknown, fallback = 0): number =>
-        typeof v === 'number' ? v : typeof v === 'string' && !Number.isNaN(Number(v)) ? Number(v) : fallback
+        typeof v === 'number'
+          ? v
+          : typeof v === 'string' && !Number.isNaN(Number(v))
+            ? Number(v)
+            : fallback
 
       const currentLoc = isRecord(trainRaw.current_location)
         ? {
@@ -312,10 +317,10 @@ export class NetworkRailClient {
           : [],
         schedule: (trainRaw.schedule as EnhancedTrainService['schedule']) || undefined,
         delayMinutes: getNumber(trainRaw.delay_minutes, 0),
-        variationStatus: (getString(trainRaw.variation_status, 'ON TIME') as
+        variationStatus: getString(trainRaw.variation_status, 'ON TIME') as
           | 'EARLY'
           | 'ON TIME'
-          | 'LATE'),
+          | 'LATE',
         toc: getString(trainRaw.toc),
         serviceCode: getString(trainRaw.service_code),
         lastUpdated: new Date(),
@@ -339,9 +344,7 @@ export class NetworkRailClient {
     try {
       const response = await this.makeHTTPRequest<{
         feeds?: { movements?: boolean; vstp?: boolean; describer?: boolean; schedule?: boolean }
-      }>(
-        '/api/health'
-      )
+      }>('/api/health')
 
       return {
         feeds: {

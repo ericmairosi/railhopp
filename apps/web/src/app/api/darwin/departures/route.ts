@@ -8,10 +8,18 @@ import { rateLimit } from '@/lib/rate-limit'
 export async function GET(request: NextRequest) {
   try {
     // Rate limit: 60 requests per 60 seconds per IP for this endpoint
-    const rl = await rateLimit(request, { keyPrefix: 'rl:darwin:departures', limit: 60, windowSeconds: 60 })
+    const rl = await rateLimit(request, {
+      keyPrefix: 'rl:darwin:departures',
+      limit: 60,
+      windowSeconds: 60,
+    })
     if (!rl.allowed) {
       return NextResponse.json(
-        { success: false, error: { code: 'RATE_LIMITED', message: 'Too many requests. Please try again later.' }, retryAfter: rl.reset.toISOString() },
+        {
+          success: false,
+          error: { code: 'RATE_LIMITED', message: 'Too many requests. Please try again later.' },
+          retryAfter: rl.reset.toISOString(),
+        },
         { status: 429 }
       )
     }
@@ -76,7 +84,12 @@ export async function GET(request: NextRequest) {
             code: 'API_NOT_CONFIGURED',
             message: 'Darwin real-time APIs are not configured',
             details: {
-              requiredEnv: ['DARWIN_ENABLED', 'DARWIN_USERNAME', 'DARWIN_PASSWORD', 'DARWIN_QUEUE_URL'],
+              requiredEnv: [
+                'DARWIN_ENABLED',
+                'DARWIN_USERNAME',
+                'DARWIN_PASSWORD',
+                'DARWIN_QUEUE_URL',
+              ],
             },
           },
         },
@@ -126,7 +139,6 @@ export async function GET(request: NextRequest) {
 
     // Do not fall back to mock data. Return a clear error with guidance.
     // This follows the rule to avoid mock data when real APIs fail.
-    
 
     if (error instanceof DarwinAPIError) {
       return NextResponse.json(

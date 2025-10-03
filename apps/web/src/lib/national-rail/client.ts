@@ -60,7 +60,9 @@ export class NationalRailClient {
         options.operators.forEach((op) => queryParams.append('operators', op))
       }
 
-      const response = await this.makeRequest<{ disruptions?: unknown[] }>(`/disruptions?${queryParams.toString()}`)
+      const response = await this.makeRequest<{ disruptions?: unknown[] }>(
+        `/disruptions?${queryParams.toString()}`
+      )
 
       return this.transformDisruptions(response.data?.disruptions || [])
     } catch (error) {
@@ -138,7 +140,9 @@ export class NationalRailClient {
    */
   async getStationFacilities(crs: string): Promise<NationalRailStationFacilities | null> {
     try {
-      const response = await this.makeRequest<{ station?: unknown }>(`/stations/${crs.toUpperCase()}/facilities`)
+      const response = await this.makeRequest<{ station?: unknown }>(
+        `/stations/${crs.toUpperCase()}/facilities`
+      )
 
       if (!response.data?.station) {
         return null
@@ -171,7 +175,9 @@ export class NationalRailClient {
       if (options.to) queryParams.append('to', options.to)
       if (options.effectiveFrom) queryParams.append('effective_from', options.effectiveFrom)
 
-      const response = await this.makeRequest<{ changes?: unknown[] }>(`/timetable/changes?${queryParams.toString()}`)
+      const response = await this.makeRequest<{ changes?: unknown[] }>(
+        `/timetable/changes?${queryParams.toString()}`
+      )
 
       const mapChangeType = (v: unknown): TimetableChange['changeType'] => {
         const s = String(v ?? '')
@@ -373,9 +379,13 @@ export class NationalRailClient {
         incidentTitle: String(d.incident_title ?? ''),
         incidentSummary: String(d.incident_summary ?? ''),
         incidentDescription: String(d.incident_description ?? ''),
-        incidentStatus: String(d.incident_status ?? '' as any) as NationalRailDisruption['incidentStatus'],
-        incidentType: String(d.incident_type ?? '' as any) as NationalRailDisruption['incidentType'],
-        severity: String(d.severity ?? '' as any) as NationalRailDisruption['severity'],
+        incidentStatus: String(
+          d.incident_status ?? ('' as any)
+        ) as NationalRailDisruption['incidentStatus'],
+        incidentType: String(
+          d.incident_type ?? ('' as any)
+        ) as NationalRailDisruption['incidentType'],
+        severity: String(d.severity ?? ('' as any)) as NationalRailDisruption['severity'],
         startTime: String(d.start_time ?? ''),
         endTime: d.end_time ? String(d.end_time) : undefined,
         lastUpdated: String(d.last_updated ?? ''),
@@ -396,7 +406,7 @@ export class NationalRailClient {
               name: String(to.name ?? ''),
               crs: String(to.crs ?? ''),
             },
-            direction: (r.direction as any) as 'Both' | 'Inbound' | 'Outbound' | undefined,
+            direction: r.direction as any as 'Both' | 'Inbound' | 'Outbound' | undefined,
           }
         }),
         alternativeTransport: d.alternative_transport ? String(d.alternative_transport) : undefined,

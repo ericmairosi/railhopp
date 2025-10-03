@@ -27,7 +27,8 @@ export default function StationSummaryCard() {
             const sres = await fetch(`/api/stations/suggest?q=${encodeURIComponent(crs)}`)
             const sjson = await sres.json()
             const match = Array.isArray(sjson?.data)
-              ? (sjson.data.find((s: any) => (s.code || '').toUpperCase() === crs.toUpperCase()) || sjson.data[0])
+              ? sjson.data.find((s: any) => (s.code || '').toUpperCase() === crs.toUpperCase()) ||
+                sjson.data[0]
               : null
             if (match) {
               setData({ code: match.code, name: match.name })
@@ -107,38 +108,44 @@ export default function StationSummaryCard() {
         <>
           <div className="mb-2 text-xs text-slate-500">Source: Knowledgebase</div>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          <div>
-            <div className="text-xs font-semibold text-slate-500">STATION</div>
-            <div className="text-base font-bold text-slate-900">{data.name}</div>
-            <div className="text-xs text-slate-500">{data.code}</div>
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-slate-500">FACILITIES</div>
-            <div className="mt-1 flex flex-wrap gap-2">
-              {(data.facilities || []).slice(0, 4).map((f: string, i: number) => (
-                <span key={`sf-${i}`} className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
-                  {f}
-                </span>
-              ))}
-              {(!data.facilities || data.facilities.length === 0) && (
-                <span className="text-xs text-slate-400">No data</span>
-              )}
+            <div>
+              <div className="text-xs font-semibold text-slate-500">STATION</div>
+              <div className="text-base font-bold text-slate-900">{data.name}</div>
+              <div className="text-xs text-slate-500">{data.code}</div>
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-slate-500">FACILITIES</div>
+              <div className="mt-1 flex flex-wrap gap-2">
+                {(data.facilities || []).slice(0, 4).map((f: string, i: number) => (
+                  <span
+                    key={`sf-${i}`}
+                    className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700"
+                  >
+                    {f}
+                  </span>
+                ))}
+                {(!data.facilities || data.facilities.length === 0) && (
+                  <span className="text-xs text-slate-400">No data</span>
+                )}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-slate-500">ACCESSIBILITY</div>
+              <div className="mt-1 flex flex-wrap gap-2">
+                {(data.accessibility || []).slice(0, 4).map((f: string, i: number) => (
+                  <span
+                    key={`sa-${i}`}
+                    className="rounded bg-amber-50 px-2 py-0.5 text-xs text-amber-700"
+                  >
+                    {f}
+                  </span>
+                ))}
+                {(!data.accessibility || data.accessibility.length === 0) && (
+                  <span className="text-xs text-slate-400">No data</span>
+                )}
+              </div>
             </div>
           </div>
-          <div>
-            <div className="text-xs font-semibold text-slate-500">ACCESSIBILITY</div>
-            <div className="mt-1 flex flex-wrap gap-2">
-              {(data.accessibility || []).slice(0, 4).map((f: string, i: number) => (
-                <span key={`sa-${i}`} className="rounded bg-amber-50 px-2 py-0.5 text-xs text-amber-700">
-                  {f}
-                </span>
-              ))}
-              {(!data.accessibility || data.accessibility.length === 0) && (
-                <span className="text-xs text-slate-400">No data</span>
-              )}
-            </div>
-          </div>
-        </div>
         </>
       )}
     </div>

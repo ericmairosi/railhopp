@@ -47,7 +47,8 @@ export default function StationDetailsPanel({
             const sres = await fetch(`/api/stations/suggest?q=${encodeURIComponent(crs)}`)
             const sjson = await sres.json()
             const match = Array.isArray(sjson?.data)
-              ? (sjson.data.find((s: any) => (s.code || '').toUpperCase() === crs.toUpperCase()) || sjson.data[0])
+              ? sjson.data.find((s: any) => (s.code || '').toUpperCase() === crs.toUpperCase()) ||
+                sjson.data[0]
               : null
             if (match) {
               setData({ code: match.code, name: match.name, source: 'summary' })
@@ -117,12 +118,19 @@ export default function StationDetailsPanel({
               )}
               <div className="flex flex-wrap gap-3 text-xs">
                 {data.phone && (
-                  <a href={`tel:${data.phone}`} className="inline-flex items-center gap-1 rounded border px-2 py-1 text-slate-700">
+                  <a
+                    href={`tel:${data.phone}`}
+                    className="inline-flex items-center gap-1 rounded border px-2 py-1 text-slate-700"
+                  >
                     <Phone size={14} /> {data.phone}
                   </a>
                 )}
                 {data.website && (
-                  <a href={data.website} target="_blank" className="inline-flex items-center gap-1 rounded border px-2 py-1 text-slate-700">
+                  <a
+                    href={data.website}
+                    target="_blank"
+                    className="inline-flex items-center gap-1 rounded border px-2 py-1 text-slate-700"
+                  >
                     <Globe size={14} /> Website
                   </a>
                 )}

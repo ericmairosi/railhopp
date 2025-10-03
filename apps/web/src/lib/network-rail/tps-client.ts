@@ -46,7 +46,9 @@ export class TPSClient extends BaseNetworkRailClient<TPSMessage> {
     }
   }
 
-  private determineMessageType(data: unknown): 'timing_point' | 'route_section' | 'network_topology' {
+  private determineMessageType(
+    data: unknown
+  ): 'timing_point' | 'route_section' | 'network_topology' {
     const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
     if (isObj(data) && 'tiploc_code' in data) return 'timing_point'
     if (isObj(data) && 'route_code' in data) return 'route_section'

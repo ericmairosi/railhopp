@@ -43,7 +43,9 @@ class RealtimeCacheMemory {
 
   private broadcast(evt: { type: 'service_update'; data: ServiceUpdate }) {
     for (const s of this.subscribers) {
-      try { s(evt) } catch {}
+      try {
+        s(evt)
+      } catch {}
     }
   }
 }
@@ -107,7 +109,9 @@ class RealtimeCacheRedis {
 
   private broadcast(evt: { type: 'service_update'; data: ServiceUpdate }) {
     for (const s of this.subscribers) {
-      try { s(evt) } catch {}
+      try {
+        s(evt)
+      } catch {}
     }
   }
 }

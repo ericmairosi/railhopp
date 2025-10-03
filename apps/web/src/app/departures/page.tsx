@@ -88,11 +88,22 @@ export default function DeparturesPage() {
             const isCancelled = Boolean(d.cancelled)
 
             let delayMinutes: number | undefined
-            if (!isCancelled && estimated && estimated !== 'On time' && scheduled && estimated !== scheduled) {
+            if (
+              !isCancelled &&
+              estimated &&
+              estimated !== 'On time' &&
+              scheduled &&
+              estimated !== scheduled
+            ) {
               const [sh, sm] = scheduled.split(':').map(Number)
               const [eh, em] = estimated.split(':').map(Number)
-              if (!Number.isNaN(sh) && !Number.isNaN(sm) && !Number.isNaN(eh) && !Number.isNaN(em)) {
-                delayMinutes = Math.max(0, (eh * 60 + em) - (sh * 60 + sm))
+              if (
+                !Number.isNaN(sh) &&
+                !Number.isNaN(sm) &&
+                !Number.isNaN(eh) &&
+                !Number.isNaN(em)
+              ) {
+                delayMinutes = Math.max(0, eh * 60 + em - (sh * 60 + sm))
               }
             }
 
@@ -108,7 +119,11 @@ export default function DeparturesPage() {
               destinationCRS: d.destinationCRS || d.destination?.crs || '',
               origin: d.origin?.locationName || d.origin || undefined,
               originCRS: d.originCRS || d.origin?.crs || undefined,
-              status: isCancelled ? 'Cancelled' : estimated && estimated !== 'On time' && estimated !== scheduled ? 'Delayed' : 'On time',
+              status: isCancelled
+                ? 'Cancelled'
+                : estimated && estimated !== 'On time' && estimated !== scheduled
+                  ? 'Delayed'
+                  : 'On time',
               delayMinutes,
               isCancelled,
               cancelReason: d.cancelReason,
@@ -133,6 +148,14 @@ export default function DeparturesPage() {
   }
 
   useEffect(() => {
+    // Initialize from ?crs= param if present
+    try {
+      const u = new URL(window.location.href)
+      const crs = u.searchParams.get('crs')
+      if (crs && /^[A-Za-z]{3}$/.test(crs)) {
+        setStationCode(crs.toUpperCase())
+      }
+    } catch {}
     fetchDepartures(stationCode)
   }, [stationCode])
 
@@ -494,7 +517,11 @@ export default function DeparturesPage() {
         }
       `}</style>
 
-      <StationDetailsPanel crs={stationCode} open={showStationInfo} onClose={() => setShowStationInfo(false)} />
+      <StationDetailsPanel
+        crs={stationCode}
+        open={showStationInfo}
+        onClose={() => setShowStationInfo(false)}
+      />
       <DataAttribution />
     </div>
   )

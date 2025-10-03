@@ -347,16 +347,14 @@ export class UnifiedRailDataService {
         darwinData: {
           serviceId: darwinDetails.serviceID,
           operator: darwinDetails.operator,
-          scheduledDeparture:
-            darwinDetails.previousCallingPoints?.[0]?.callingPoint?.[0]?.st || '',
-          estimatedDeparture:
-            darwinDetails.previousCallingPoints?.[0]?.callingPoint?.[0]?.et,
+          scheduledDeparture: darwinDetails.previousCallingPoints?.[0]?.callingPoint?.[0]?.st || '',
+          estimatedDeparture: darwinDetails.previousCallingPoints?.[0]?.callingPoint?.[0]?.et,
           platform: darwinDetails.platform,
           status: darwinDetails.cancelReason
             ? 'Cancelled'
             : darwinDetails.delayReason
-            ? 'Delayed'
-            : 'On time',
+              ? 'Delayed'
+              : 'On time',
         },
         dataSource: 'darwin',
         lastUpdated: new Date(),

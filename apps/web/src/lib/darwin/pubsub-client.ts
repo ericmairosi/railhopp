@@ -56,15 +56,11 @@ export class DarwinPubSubClient {
     const brokerUrl = process.env.DARWIN_BROKER_URL
     return Boolean(
       this.config.enabled &&
-      (
-        brokerUrl ||
-        (
-          this.config.queueUrl &&
-          this.config.username &&
-          this.config.password &&
-          this.config.username !== 'your_darwin_username'
-        )
-      )
+        (brokerUrl ||
+          (this.config.queueUrl &&
+            this.config.username &&
+            this.config.password &&
+            this.config.username !== 'your_darwin_username'))
     )
   }
 
@@ -230,7 +226,7 @@ export class DarwinPubSubClient {
   private mapBrokerEventsToDepartures(items: BrokerEvent[], limit: number): LiveDeparture[] {
     const out: LiveDeparture[] = []
     for (const ev of items) {
-      const body = (('body' in ev && ev.body) ? ev.body : ev) as Record<string, unknown>
+      const body = ('body' in ev && ev.body ? ev.body : ev) as Record<string, unknown>
 
       const getStr = (keys: string[], fallback = ''): string => {
         for (const k of keys) {

@@ -15,7 +15,9 @@ async function main() {
   let map: Record<string, string> = {}
 
   try {
-    const res = await fetch(`${base}/api/network-rail/corpus/tiploc-map`, { timeout: 30000 as any })
+    const res = await fetch(`${base}/api/network-rail/corpus/tiploc-map`, {
+      /* timeout: 30000 */
+    } as any)
     if (res.ok) {
       const json = await res.json()
       map = json?.map || {}

@@ -1,7 +1,10 @@
-// API route for comprehensive journey planning
+// API route for comprehensive journey planning (MVP using real data, no mocks)
 import { NextRequest, NextResponse } from 'next/server'
+import { getDarwinClient } from '@/lib/darwin/client'
+import { rateLimit } from '@/lib/rate-limit'
 
-interface JourneyPlanRequest {
+// Prefer `type` over `interface` for TS types
+export type JourneyPlanRequest = {
   from: string
   to: string
   date: string
@@ -10,7 +13,21 @@ interface JourneyPlanRequest {
   type: 'depart' | 'arrive'
 }
 
-interface JourneyOption {
+export type JourneySegment = {
+  id: string
+  from: { code: string; name: string }
+  to: { code: string; name: string }
+  departureTime: string
+  arrivalTime: string
+  operator: string
+  serviceId?: string
+  platform?: string
+  duration: string
+  status: 'on-time' | 'delayed' | 'cancelled'
+  delay?: number
+}
+
+export type JourneyOption = {
   id: string
   departureTime: string
   arrivalTime: string
@@ -32,121 +49,336 @@ interface JourneyOption {
   realTimeData: boolean
 }
 
-interface JourneySegment {
-  id: string
-  from: { code: string; name: string }
-  to: { code: string; name: string }
-  departureTime: string
-  arrivalTime: string
-  operator: string
-  serviceId?: string
-  platform?: string
-  duration: string
-  status: 'on-time' | 'delayed' | 'cancelled'
-  delay?: number
+async function enrichDirectJourneys(journeys: JourneyOption[], to: string) {
+  try {
+    const ks = (await import('@/lib/knowledge-station/client')).getKnowledgeStationClient()
+    if (!ks.isEnabled()) return journeys
+
+    const enriched: JourneyOption[] = []
+    for (const j of journeys) {
+      if (!j.segments?.[0]?.serviceId) {
+        enriched.push(j)
+        continue
+      }
+      try {
+        const tracking = await ks.getServiceTracking({ serviceId: j.segments[0].serviceId })
+        // Find arrival time at destination among nextStops
+        const stop = tracking.nextStops.find((s) => s.crs?.toUpperCase() === to)
+        if (stop && (stop.estimatedArrival || stop.scheduledArrival)) {
+          const arr = (stop.estimatedArrival || stop.scheduledArrival)!.slice(0, 5)
+          const dep = j.departureTime
+          const durationMins = computeDurationMinutes(dep, arr)
+          j.arrivalTime = arr
+          j.duration = formatDuration(durationMins)
+          if (j.segments?.[0]) {
+            j.segments = [...j.segments]
+            j.segments[0] = {
+              ...j.segments[0],
+              arrivalTime: arr,
+              duration: formatDuration(durationMins),
+            }
+          }
+        }
+      } catch {}
+      enriched.push(j)
+    }
+    return enriched
+  } catch {
+    return journeys
+  }
+}
+
+function computeDurationMinutes(depHHMM: string, arrHHMM: string): number {
+  const [dh, dm] = depHHMM.split(':').map(Number)
+  const [ah, am] = arrHHMM.split(':').map(Number)
+  const d = dh * 60 + dm,
+    a = ah * 60 + am
+  const span = a - d
+  return span >= 0 ? span : 24 * 60 + span
+}
+
+function formatDuration(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  if (h === 0) return `${m}m`
+  if (m === 0) return `${h}h`
+  return `${h}h ${m}m`
+}
+
+async function buildOneChangeJourneys(
+  from: string,
+  to: string,
+  date: string,
+  maxResults: number
+): Promise<JourneyOption[]> {
+  const out: JourneyOption[] = []
+  try {
+    const { getDarwinClient } = await import('@/lib/darwin/client')
+    const { getKnowledgeStationClient } = await import('@/lib/knowledge-station/client')
+    const darwin = getDarwinClient()
+    const ks = getKnowledgeStationClient()
+    if (!darwin.isEnabled() || !ks.isEnabled()) return out
+
+    // Get candidate first-leg services (no filter to allow interchanges)
+    const fromBoard = await darwin.getStationBoard({ crs: from, numRows: 20 })
+
+    for (const dep of fromBoard.departures) {
+      if (dep.destinationCRS?.toUpperCase() === to) continue // direct; handled elsewhere
+      if (!dep.serviceID) continue
+      if (out.length >= maxResults) break
+
+      let firstArrAt = ''
+      let interchange: { name: string; crs: string; platform?: string } | null = null
+      try {
+        const t = await ks.getServiceTracking({ serviceId: dep.serviceID })
+        // choose first next stop as interchange candidate
+        const nxt = t.nextStops?.[0]
+        if (!nxt) continue
+        interchange = { name: nxt.name, crs: nxt.crs, platform: nxt.platform }
+        firstArrAt = (nxt.estimatedArrival || nxt.scheduledArrival || '').slice(0, 5)
+        if (!firstArrAt) continue
+      } catch {
+        continue
+      }
+
+      // Find a connecting service from interchange to destination after arrival + 5m
+      const connBoard = await darwin.getStationBoard({
+        crs: interchange!.crs,
+        numRows: 20,
+        filterCrs: to,
+        filterType: 'to',
+      })
+      const minDepMinutes = addMinutes(firstArrAt, 5)
+      const connecting = connBoard.departures.find(
+        (d) => hhmmToMinutes(d.etd && d.etd !== 'On time' ? d.etd : d.std) >= minDepMinutes
+      )
+      if (!connecting || !connecting.serviceID) continue
+
+      let finalArr = ''
+      try {
+        const t2 = await ks.getServiceTracking({ serviceId: connecting.serviceID })
+        const stopTo = t2.nextStops.find((s) => s.crs?.toUpperCase() === to)
+        finalArr = (stopTo?.estimatedArrival || stopTo?.scheduledArrival || '').slice(0, 5)
+        if (!finalArr) continue
+      } catch {
+        continue
+      }
+
+      const journeyId = `${dep.serviceID}__${connecting.serviceID}`
+      const totalDuration = formatDuration(
+        minutesDiff(hhmmToMinutes(dep.std), hhmmToMinutes(finalArr))
+      )
+
+      out.push({
+        id: journeyId,
+        departureTime: dep.std.slice(0, 5),
+        arrivalTime: finalArr,
+        duration: totalDuration,
+        changes: 1,
+        operator: `${dep.operator} / ${connecting.operator}`,
+        status: 'on-time',
+        platforms: { departure: dep.platform, arrival: undefined },
+        segments: [
+          {
+            id: `${dep.serviceID}-leg1`,
+            from: { code: from, name: from },
+            to: { code: interchange!.crs, name: interchange!.name },
+            departureTime: dep.std.slice(0, 5),
+            arrivalTime: firstArrAt,
+            operator: dep.operator,
+            serviceId: dep.serviceID,
+            platform: dep.platform,
+            duration: formatDuration(
+              minutesDiff(hhmmToMinutes(dep.std), hhmmToMinutes(firstArrAt))
+            ),
+            status: 'on-time',
+          },
+          {
+            id: `${connecting.serviceID}-leg2`,
+            from: { code: interchange!.crs, name: interchange!.name },
+            to: { code: to, name: to },
+            departureTime: (connecting.std || '').slice(0, 5),
+            arrivalTime: finalArr,
+            operator: connecting.operator,
+            serviceId: connecting.serviceID,
+            platform: connecting.platform,
+            duration: formatDuration(
+              minutesDiff(hhmmToMinutes(connecting.std), hhmmToMinutes(finalArr))
+            ),
+            status: 'on-time',
+          },
+        ],
+        realTimeData: true,
+      })
+    }
+  } catch {
+    // ignore
+  }
+  return out
+}
+
+function hhmmToMinutes(t: string): number {
+  const [h, m] = (t || '0:0').split(':').map(Number)
+  return h * 60 + m
+}
+function minutesDiff(a: number, b: number): number {
+  const d = b - a
+  return d >= 0 ? d : 24 * 60 + d
+}
+function addMinutes(hhmm: string, mins: number): number {
+  return hhmmToMinutes(hhmm) + mins
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: JourneyPlanRequest = await request.json()
-    const { from, to, date, time, passengers, type } = body
+    const from = (body.from || '').toUpperCase().trim()
+    const to = (body.to || '').toUpperCase().trim()
+    const date = body.date
+    const time = body.time
+    const passengers = Number(body.passengers || 1)
+    const type = body.type || 'depart'
 
     if (!from || !to || !date || !time) {
-      return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 })
-    }
-
-    console.log(`Planning journey from ${from} to ${to} on ${date} at ${time}`)
-
-    // No mock fallback: require real journey planning integration
-    const simulate = process.env.ENABLE_JOURNEY_SIMULATION === 'true'
-    if (!simulate) {
       return NextResponse.json(
         {
           success: false,
           error: {
-            code: 'SERVICE_DISABLED',
-            message:
-              'Journey planner is not yet integrated with a real API. No mock fallback is used. Configure a journey API or enable simulation explicitly.',
-            details: {
-              enableSimulation: 'Set ENABLE_JOURNEY_SIMULATION=true to enable simulated results in development only',
-            },
+            code: 'MISSING_PARAMS',
+            message: 'Missing required parameters: from, to, date, time',
+          },
+        },
+        { status: 400 }
+      )
+    }
+
+    if (!/^[A-Z]{3}$/.test(from) || !/^[A-Z]{3}$/.test(to)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_CRS',
+            message: 'from/to must be CRS codes (3 uppercase letters)',
+          },
+        },
+        { status: 400 }
+      )
+    }
+
+    // Rate limit per IP per OD pair
+    const rlCfg = {
+      keyPrefix: `api:journey:plan:${from}:${to}`,
+      limit: parseInt(process.env.RATE_LIMIT_JOURNEY_PER_MIN || '20', 10),
+      windowSeconds: 60,
+    }
+    const rl = await rateLimit(request, rlCfg)
+    if (!rl.allowed) {
+      return new NextResponse(
+        JSON.stringify({
+          success: false,
+          error: { code: 'RATE_LIMITED', message: 'Too many requests' },
+        }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': '60',
+            'X-RateLimit-Limit': String(rlCfg.limit),
+            'X-RateLimit-Remaining': String(rl.remaining),
+            'X-RateLimit-Reset': rl.reset.toISOString(),
+          },
+        }
+      )
+    }
+
+    const darwin = getDarwinClient()
+    if (!darwin.isEnabled()) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'DARWIN_NOT_CONFIGURED',
+            message: 'Darwin Pub/Sub not configured. Set Darwin environment variables.',
           },
         },
         { status: 503 }
       )
     }
 
-    // Simulation path (development only)
+    // Use Darwin station board filtered by destination for direct services
+    const board = await darwin.getStationBoard({
+      crs: from,
+      numRows: 30,
+      filterCrs: to,
+      filterType: 'to',
+    })
 
-    // In a real implementation, this would integrate with multiple APIs:
-    // 1. Darwin API for real-time data
-    // 2. National Rail Enquiries for timetables
-    // 3. Trainline/other booking APIs for prices
-    // 4. Network Rail for disruptions
+    let journeys: JourneyOption[] = (board.departures || []).map((dep, idx) => {
+      const scheduled = (dep.std || '').slice(0, 5)
+      const estimated = (dep.etd || '').slice(0, 5)
 
-    const journeyOptions: JourneyOption[] = []
-
-    // Generate realistic journey options based on common UK routes
-    const routeData = getRouteData(from, to)
-    const baseDateTime = new Date(`${date}T${time}`)
-
-    // Generate multiple journey options
-    for (let i = 0; i < routeData.services.length; i++) {
-      const service = routeData.services[i]
-      const departTime = new Date(baseDateTime.getTime() + i * service.frequency * 60000)
-      const arrivalTime = new Date(departTime.getTime() + service.duration * 60000)
-
-      // Use deterministic variations based on service index to prevent hydration issues
-      const hasDelay = i % 7 === 0 // Every 7th service has delay
-      const isCancelled = i % 50 === 0 // Every 50th service is cancelled
-      const actualDelay = hasDelay ? ((i % 4) + 1) * 5 : 0 // 5, 10, 15, or 20 min delays
-
-      const journeyOption: JourneyOption = {
-        id: `journey-${from}-${to}-${i}`,
-        departureTime: departTime.toTimeString().slice(0, 5),
-        arrivalTime: new Date(arrivalTime.getTime() + actualDelay * 60000)
-          .toTimeString()
-          .slice(0, 5),
-        duration: formatDuration(service.duration + actualDelay),
-        changes: service.changes,
-        operator: service.operator,
-        price: service.price,
-        status: isCancelled ? 'cancelled' : hasDelay ? 'delayed' : 'on-time',
-        delay: actualDelay > 0 ? actualDelay : undefined,
-        platforms: {
-          departure: service.platforms?.departure,
-          arrival: service.platforms?.arrival,
-        },
-        segments: service.segments.map((segment: SimpleSegment, segIdx: number): JourneySegment => ({
-          ...segment,
-          id: `segment-${i}-${segIdx}`,
-          departureTime:
-            segIdx === 0
-              ? departTime.toTimeString().slice(0, 5)
-              : new Date(departTime.getTime() + segIdx * 60 * 60000).toTimeString().slice(0, 5),
-          arrivalTime:
-            segIdx === service.segments.length - 1
-              ? new Date(arrivalTime.getTime() + actualDelay * 60000).toTimeString().slice(0, 5)
-              : new Date(departTime.getTime() + (segIdx + 1) * 60 * 60000)
-                  .toTimeString()
-                  .slice(0, 5),
-          status: isCancelled ? 'cancelled' : hasDelay && segIdx === 0 ? 'delayed' : 'on-time',
-          delay: hasDelay && segIdx === 0 ? actualDelay : undefined,
-        })),
-        disruptions: hasDelay ? [`Service delayed due to ${getDelayReason(i)}`] : undefined,
-        realTimeData: true,
+      // Compute delay in minutes if possible
+      let delay: number | undefined
+      if (scheduled && estimated && estimated !== 'On time' && estimated !== scheduled) {
+        const [sh, sm] = scheduled.split(':').map(Number)
+        const [eh, em] = estimated.split(':').map(Number)
+        if (!Number.isNaN(sh) && !Number.isNaN(sm) && !Number.isNaN(eh) && !Number.isNaN(em)) {
+          delay = Math.max(0, eh * 60 + em - (sh * 60 + sm))
+        }
       }
 
-      journeyOptions.push(journeyOption)
+      const status: JourneyOption['status'] = dep.cancelReason
+        ? 'cancelled'
+        : delay && delay > 0
+          ? 'delayed'
+          : 'on-time'
+
+      return {
+        id: dep.serviceID || `svc-${from}-${to}-${idx}`,
+        departureTime: scheduled,
+        arrivalTime: '', // Arrival time not available without schedule details in MVP
+        duration: '', // Not computed in MVP (no mock values)
+        changes: 0,
+        operator: dep.operator || '',
+        status,
+        delay,
+        platforms: { departure: dep.platform },
+        segments: [
+          {
+            id: `seg-${idx}`,
+            from: { code: from, name: board.stationName || from },
+            to: { code: to, name: dep.destination || to },
+            departureTime: scheduled,
+            arrivalTime: '',
+            operator: dep.operator || '',
+            serviceId: dep.serviceID,
+            platform: dep.platform,
+            duration: '',
+            status:
+              status === 'cancelled' ? 'cancelled' : delay && delay > 0 ? 'delayed' : 'on-time',
+            delay,
+          },
+        ],
+        realTimeData: true,
+      }
+    })
+
+    // Enrich direct journeys with arrival/duration via Knowledge Station
+    journeys = await enrichDirectJourneys(journeys, to)
+
+    // If few options, attempt to build one-change journeys (best effort)
+    if (journeys.length < 4) {
+      const withChanges = await buildOneChangeJourneys(from, to, date, 4 - journeys.length)
+      journeys.push(...withChanges)
     }
 
     // Sort by departure time
-    journeyOptions.sort((a, b) => a.departureTime.localeCompare(b.departureTime))
+    journeys.sort((a, b) => a.departureTime.localeCompare(b.departureTime))
 
     return NextResponse.json({
       success: true,
       data: {
-        journeys: journeyOptions,
+        journeys,
         searchCriteria: { from, to, date, time, passengers, type },
         timestamp: new Date().toISOString(),
       },
@@ -166,149 +398,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
-
-type SimpleSegment = { from: { code: string; name: string }; to: { code: string; name: string }; operator: string; duration: string }
-
-type RouteService = {
-  operator: string
-  duration: number
-  frequency: number
-  changes: number
-  price?: { adult: number; currency: string }
-  platforms?: { departure?: string; arrival?: string }
-  segments: SimpleSegment[]
-}
-
-type RouteData = { services: RouteService[] }
-
-function getRouteData(from: string, to: string): RouteData {
-  // Simulate route data based on common UK rail connections
-  const routes: Record<string, RouteData> = {
-    'KGX-YOR': {
-      services: [
-        {
-          operator: 'LNER',
-          duration: 120, // 2 hours
-          frequency: 30, // Every 30 minutes
-          changes: 0,
-          price: { adult: 45, currency: 'GBP' },
-          platforms: { departure: '1', arrival: '3' },
-          segments: [
-            {
-              from: { code: 'KGX', name: 'London Kings Cross' },
-              to: { code: 'YOR', name: 'York' },
-              operator: 'LNER',
-              duration: '2h 0m',
-            },
-          ],
-        },
-      ],
-    },
-    'KGX-EDB': {
-      services: [
-        {
-          operator: 'LNER',
-          duration: 280, // 4h 40m
-          frequency: 60, // Every hour
-          changes: 0,
-          price: { adult: 85, currency: 'GBP' },
-          platforms: { departure: '2', arrival: '1' },
-          segments: [
-            {
-              from: { code: 'KGX', name: 'London Kings Cross' },
-              to: { code: 'EDB', name: 'Edinburgh Waverley' },
-              operator: 'LNER',
-              duration: '4h 40m',
-            },
-          ],
-        },
-      ],
-    },
-    'KGX-MAN': {
-      services: [
-        {
-          operator: 'Avanti West Coast',
-          duration: 130, // 2h 10m
-          frequency: 45, // Every 45 minutes
-          changes: 0,
-          price: { adult: 55, currency: 'GBP' },
-          platforms: { departure: '4', arrival: '2' },
-          segments: [
-            {
-              from: { code: 'KGX', name: 'London Kings Cross' },
-              to: { code: 'MAN', name: 'Manchester Piccadilly' },
-              operator: 'Avanti West Coast',
-              duration: '2h 10m',
-            },
-          ],
-        },
-      ],
-    },
-  }
-
-  const routeKey = `${from}-${to}`
-  const reverseKey = `${to}-${from}`
-
-  // Return route data or generate default
-  if (routes[routeKey]) {
-    return routes[routeKey]
-  } else if (routes[reverseKey]) {
-    // Reverse the route
-    const reverseRoute: RouteData = { ...routes[reverseKey] }
-    reverseRoute.services = reverseRoute.services.map((service: RouteService) => ({
-      ...service,
-      segments: service.segments.map((segment: SimpleSegment) => ({
-        ...segment,
-        from: segment.to,
-        to: segment.from,
-      })),
-    }))
-    return reverseRoute
-  }
-
-  // Default route data for unknown routes
-  return {
-    services: [
-      {
-        operator: 'National Rail',
-        duration: 90, // 1h 30m default
-        frequency: 30,
-        changes: 0,
-        price: { adult: 35, currency: 'GBP' },
-        segments: [
-          {
-            from: { code: from, name: `Station ${from}` },
-            to: { code: to, name: `Station ${to}` },
-            operator: 'National Rail',
-            duration: '1h 30m',
-          },
-        ],
-      },
-    ],
-  }
-}
-
-function formatDuration(minutes: number): string {
-  const hours = Math.floor(minutes / 60)
-  const mins = minutes % 60
-
-  if (hours === 0) return `${mins}m`
-  if (mins === 0) return `${hours}h`
-  return `${hours}h ${mins}m`
-}
-
-function getDelayReason(index: number): string {
-  const reasons = [
-    'signal failure',
-    'points failure',
-    'overhead line problems',
-    'trespassing incident',
-    'weather conditions',
-    'earlier incident',
-    'crew availability',
-    'technical fault',
-  ]
-
-  return reasons[index % reasons.length]
 }

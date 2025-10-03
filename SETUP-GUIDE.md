@@ -203,5 +203,6 @@ curl "http://localhost:3000/api/status/diagnostics?summary=true"
 ```
 
 Notes:
+
 - Diagnostics are captured when you hit `/api/unified/departures` or `/api/v2/departures`.
 - If you haven’t called those yet, diagnostics will be empty.

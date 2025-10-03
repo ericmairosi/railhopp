@@ -61,111 +61,8 @@ export async function GET(request: NextRequest) {
       console.warn('Network Rail disruptions fetch failed:', error)
     }
 
-    // If no real disruption data is available, provide realistic mock data for demonstration
-    if (disruptions.length === 0) {
-      console.log('No disruption data available - providing realistic mock data')
-
-      // Generate realistic mock disruptions based on common UK rail issues
-      const mockDisruptions: DisruptionSource[] = [
-        {
-          id: `mock-planned-${Date.now()}`,
-          title: 'Planned Engineering Works - West Coast Main Line',
-          description:
-            'Track maintenance work between Euston and Milton Keynes. Rail replacement bus services in operation.',
-          severity: 'medium',
-          category: 'planned',
-          affectedRoutes: ['London Euston - Birmingham', 'London Euston - Manchester'],
-          affectedOperators: ['Avanti West Coast', 'London Northwestern Railway'],
-          startTime: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-          endTime: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(), // 4 hours from now
-          lastUpdated: new Date().toISOString(),
-          source: 'knowledge-station',
-          externalUrl: 'https://www.nationalrail.co.uk/service_disruptions/',
-        },
-        {
-          id: `mock-technical-${Date.now() + 1}`,
-          title: 'Signal Failure - London Victoria',
-          description:
-            'Temporary signal problems affecting departures. Some services may be delayed by up to 15 minutes.',
-          severity: 'low',
-          category: 'technical',
-          affectedRoutes: ['London Victoria - Brighton', 'London Victoria - Gatwick Airport'],
-          affectedOperators: ['Southern', 'Gatwick Express'],
-          startTime: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 minutes ago
-          lastUpdated: new Date().toISOString(),
-          source: 'darwin',
-        },
-        {
-          id: `mock-weather-${Date.now() + 2}`,
-          title: 'Weather Warning - High Winds',
-          description:
-            'Speed restrictions in place due to high winds. Services may experience delays.',
-          severity: 'medium',
-          category: 'weather',
-          affectedRoutes: ['Cross-Country services', 'Scotland routes'],
-          affectedOperators: ['CrossCountry', 'ScotRail', 'LNER'],
-          startTime: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1 hour ago
-          endTime: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(), // 6 hours from now
-          lastUpdated: new Date().toISOString(),
-          source: 'networkrail',
-        },
-      ]
-
-      // Filter mock disruptions based on request parameters
-      let filteredMockDisruptions = mockDisruptions
-
-      if (operator) {
-        filteredMockDisruptions = filteredMockDisruptions.filter((d) =>
-          d.affectedOperators.some((op) => op.toLowerCase().includes(operator.toLowerCase()))
-        )
-      }
-
-      if (severity) {
-        filteredMockDisruptions = filteredMockDisruptions.filter((d) => d.severity === severity)
-      }
-
-      // Calculate realistic summary
-      const mockSummary = {
-        total: filteredMockDisruptions.length,
-        planned: filteredMockDisruptions.filter((d) => d.category === 'planned').length,
-        unplanned: filteredMockDisruptions.filter((d) => d.category !== 'planned').length,
-        severe: filteredMockDisruptions.filter((d) => d.severity === 'severe').length,
-      }
-
-      // Determine overall status
-      const overallStatus =
-        mockSummary.severe > 0 ? 'severe' : mockSummary.total > 2 ? 'minor' : 'good'
-
-      // Check API configuration status
-      const rttConfigured = !!(
-        process.env.KNOWLEDGE_STATION_API_URL &&
-        process.env.KNOWLEDGE_STATION_API_USERNAME &&
-        process.env.KNOWLEDGE_STATION_API_PASSWORD &&
-        process.env.KNOWLEDGE_STATION_ENABLED === 'true'
-      )
-      const darwinConfigured = !!(process.env.DARWIN_API_URL && process.env.DARWIN_API_TOKEN)
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          overall: overallStatus,
-          disruptions: filteredMockDisruptions,
-          lastUpdated: new Date().toISOString(),
-          summary: mockSummary,
-        },
-        timestamp: new Date().toISOString(),
-        source: 'mock',
-        dataType: 'MOCK',
-        message: 'Using realistic mock disruption data for demonstration',
-        apiStatus: {
-          rttConfigured,
-          rttAccessible: false,
-          darwinConfigured,
-          darwinAccessible: false,
-          note: 'Real APIs not accessible - showing realistic mock data. Configure RTT and Darwin APIs for live data.',
-        },
-      })
-    }
+    // If no real disruption data is available, do not fall back to mock data (per project rules)
+    // Proceed with empty list and computed summary
 
     // Apply filters
     let filteredDisruptions = disruptions
@@ -308,8 +205,10 @@ async function fetchKnowledgeStationDisruptions(): Promise<DisruptionSource[]> {
               if (s.isCancelled === true) return true
 
               // Check for significant delays (more than 10 minutes)
-              const booked = typeof s.gbttBookedDeparture === 'string' ? s.gbttBookedDeparture : undefined
-              const realtime = typeof s.realtimeDeparture === 'string' ? s.realtimeDeparture : undefined
+              const booked =
+                typeof s.gbttBookedDeparture === 'string' ? s.gbttBookedDeparture : undefined
+              const realtime =
+                typeof s.realtimeDeparture === 'string' ? s.realtimeDeparture : undefined
               if (booked && realtime) {
                 const scheduled = new Date(`2024-01-01T${booked}:00`)
                 const actual = new Date(`2024-01-01T${realtime}:00`)
@@ -322,7 +221,9 @@ async function fetchKnowledgeStationDisruptions(): Promise<DisruptionSource[]> {
 
             // If multiple services are affected, consider it a disruption
             if (problematicServices.length >= 2) {
-              const cancelledCount = problematicServices.filter((svc: unknown) => (svc as Record<string, unknown>).isCancelled === true).length
+              const cancelledCount = problematicServices.filter(
+                (svc: unknown) => (svc as Record<string, unknown>).isCancelled === true
+              ).length
               const severity =
                 cancelledCount > 2 ? 'high' : problematicServices.length > 4 ? 'medium' : 'low'
 
@@ -336,7 +237,9 @@ async function fetchKnowledgeStationDisruptions(): Promise<DisruptionSource[]> {
                   ...new Set(
                     problematicServices
                       .map((svc: unknown) => {
-                        const sd = (svc as Record<string, unknown>).locationDetail as Record<string, unknown> | undefined
+                        const sd = (svc as Record<string, unknown>).locationDetail as
+                          | Record<string, unknown>
+                          | undefined
                         const destArr = (sd?.destination as unknown[]) || []
                         const first = (destArr[0] || {}) as Record<string, unknown>
                         return typeof first.description === 'string' ? first.description : undefined

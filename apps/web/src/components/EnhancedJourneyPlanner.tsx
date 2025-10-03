@@ -149,26 +149,36 @@ export default function EnhancedJourneyPlanner({
 
   useEffect(() => {
     const load = async () => {
-      if (!fromStation?.code) { setFromDetails(null); return }
+      if (!fromStation?.code) {
+        setFromDetails(null)
+        return
+      }
       try {
         const res = await fetch(`/api/knowledgebase/station?crs=${fromStation.code}`)
         const json = await res.json()
         if (json.success) setFromDetails(json.data)
         else setFromDetails(null)
-      } catch { setFromDetails(null) }
+      } catch {
+        setFromDetails(null)
+      }
     }
     load()
   }, [fromStation?.code])
 
   useEffect(() => {
     const load = async () => {
-      if (!toStation?.code) { setToDetails(null); return }
+      if (!toStation?.code) {
+        setToDetails(null)
+        return
+      }
       try {
         const res = await fetch(`/api/knowledgebase/station?crs=${toStation.code}`)
         const json = await res.json()
         if (json.success) setToDetails(json.data)
         else setToDetails(null)
-      } catch { setToDetails(null) }
+      } catch {
+        setToDetails(null)
+      }
     }
     load()
   }, [toStation?.code])
@@ -222,7 +232,9 @@ export default function EnhancedJourneyPlanner({
     }
 
     es.addEventListener('service_update', (ev: MessageEvent) => {
-      try { applyUpdate(JSON.parse(ev.data)) } catch {}
+      try {
+        applyUpdate(JSON.parse(ev.data))
+      } catch {}
     })
     es.addEventListener('bootstrap', (ev: MessageEvent) => {
       try {
@@ -252,78 +264,27 @@ export default function EnhancedJourneyPlanner({
     setSearchPerformed(false)
 
     try {
-      // Get direct services (live) between from and to using unified aggregator
-      const departuresResponse = await fetch(
-        `/api/unified/departures?crs=${fromStation.code}&numRows=50&filterCrs=${toStation.code}&filterType=to&includeRealTimePosition=true&includeEnhancedData=true`
-      )
-      const departuresResult = await departuresResponse.json()
-
-      const enhancedJourneys: JourneyOption[] = []
-
-      if (departuresResult.success && departuresResult.data?.departures) {
-        const liveDepartures = departuresResult.data.departures.slice(0, 12)
-
-        for (const departure of liveDepartures) {
-          const journeyOption: JourneyOption = {
-            id: departure.serviceID || departure.serviceId,
-            departureTime: departure.std,
-            // Arrival time and duration are unknown without a routing engine; leave blank (no mock values)
-            arrivalTime: '',
-            duration: '',
-            changes: 0, // Direct service (filtered by destination)
-            operator: departure.operator,
-            status: departure.cancelled
-              ? 'cancelled'
-              : departure.etd === 'Delayed'
-                ? 'delayed'
-                : departure.etd && departure.std && departure.etd !== 'On time' && departure.etd !== departure.std
-                  ? 'delayed'
-                  : 'on-time',
-            delay:
-              departure.etd === 'Delayed'
-                ? undefined
-                : departure.etd && departure.std && departure.etd !== 'On time' && departure.etd !== departure.std
-                  ? calculateDelay(departure.std, departure.etd)
-                  : undefined,
-            platforms: {
-              departure: departure.platform,
-            },
-            segments: [
-              {
-                id: departure.serviceID || departure.serviceId,
-                from: fromStation,
-                to: toStation,
-                departureTime: departure.std,
-                arrivalTime: '',
-                operator: departure.operator,
-                serviceId: departure.serviceID || departure.serviceId,
-                platform: departure.platform,
-                duration: '',
-                status: departure.cancelled
-                  ? 'cancelled'
-                  : departure.etd === 'Delayed'
-                    ? 'delayed'
-                    : 'on-time',
-                delay:
-                  departure.etd === 'Delayed'
-                    ? undefined
-                    : departure.etd && departure.std && departure.etd !== 'On time' && departure.etd !== departure.std
-                      ? calculateDelay(departure.std, departure.etd)
-                      : undefined,
-              },
-            ],
-            disruptions: departure.delayReason ? [departure.delayReason] : undefined,
-            realTimeData: true,
-          }
-
-          enhancedJourneys.push(journeyOption)
-        }
+      const payload = {
+        from: fromStation.code,
+        to: toStation.code,
+        date: departureDate,
+        time: departureTime,
+        passengers,
+        type: journeyType,
       }
+      const res = await fetch('/api/journey/plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const json = await res.json()
 
-      // Sort by departure time
-      enhancedJourneys.sort((a, b) => a.departureTime.localeCompare(b.departureTime))
-
-      setJourneyOptions(enhancedJourneys)
+      if (json.success && Array.isArray(json.data?.journeys)) {
+        setJourneyOptions(json.data.journeys as JourneyOption[])
+      } else {
+        setJourneyOptions([])
+        setError(json.error?.message || 'No journeys found')
+      }
       setSearchPerformed(true)
     } catch (err) {
       console.error('Journey search error:', err)
@@ -589,10 +550,17 @@ export default function EnhancedJourneyPlanner({
                     <div className="mb-1 font-semibold text-slate-700">{fromDetails.name}</div>
                     <div className="flex flex-wrap gap-2">
                       {fromDetails.facilities?.slice(0, 2).map((f: string, i: number) => (
-                        <span key={`ff-${i}`} className="rounded bg-slate-100 px-2 py-0.5">{f}</span>
+                        <span key={`ff-${i}`} className="rounded bg-slate-100 px-2 py-0.5">
+                          {f}
+                        </span>
                       ))}
                       {fromDetails.accessibility?.slice(0, 1).map((f: string, i: number) => (
-                        <span key={`fa-${i}`} className="rounded bg-amber-50 px-2 py-0.5 text-amber-700">{f}</span>
+                        <span
+                          key={`fa-${i}`}
+                          className="rounded bg-amber-50 px-2 py-0.5 text-amber-700"
+                        >
+                          {f}
+                        </span>
                       ))}
                       <button
                         type="button"
@@ -611,10 +579,17 @@ export default function EnhancedJourneyPlanner({
                     <div className="mb-1 font-semibold text-slate-700">{toDetails.name}</div>
                     <div className="flex flex-wrap gap-2">
                       {toDetails.facilities?.slice(0, 2).map((f: string, i: number) => (
-                        <span key={`tf-${i}`} className="rounded bg-slate-100 px-2 py-0.5">{f}</span>
+                        <span key={`tf-${i}`} className="rounded bg-slate-100 px-2 py-0.5">
+                          {f}
+                        </span>
                       ))}
                       {toDetails.accessibility?.slice(0, 1).map((f: string, i: number) => (
-                        <span key={`ta-${i}`} className="rounded bg-amber-50 px-2 py-0.5 text-amber-700">{f}</span>
+                        <span
+                          key={`ta-${i}`}
+                          className="rounded bg-amber-50 px-2 py-0.5 text-amber-700"
+                        >
+                          {f}
+                        </span>
                       ))}
                       <button
                         type="button"
@@ -636,7 +611,13 @@ export default function EnhancedJourneyPlanner({
                   <div className="text-sm font-bold text-blue-900">
                     Direct trains: {fromStation.name} → {toStation.name}
                   </div>
-                  <a href="#" onClick={(e) => { e.preventDefault(); }} className="text-xs text-blue-700">
+                  <a
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault()
+                    }}
+                    className="text-xs text-blue-700"
+                  >
                     Live
                   </a>
                 </div>
@@ -647,16 +628,25 @@ export default function EnhancedJourneyPlanner({
                 )}
                 <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
                   {directTrains.slice(0, 6).map((d: any) => (
-                    <div key={d.serviceId || d.serviceID} className="flex items-center justify-between rounded-lg bg-white px-3 py-2 shadow-sm">
+                    <div
+                      key={d.serviceId || d.serviceID}
+                      className="flex items-center justify-between rounded-lg bg-white px-3 py-2 shadow-sm"
+                    >
                       <div className="flex items-center gap-4">
-                        <div className="font-mono text-lg font-bold text-slate-900">{d.std || d.scheduledTime}</div>
+                        <div className="font-mono text-lg font-bold text-slate-900">
+                          {d.std || d.scheduledTime}
+                        </div>
                         <div className="text-sm text-slate-700">
                           {fromStation.name} → {toStation.name}
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="rounded bg-blue-600 px-2 py-1 text-xs font-bold text-white">{d.platform || 'TBA'}</span>
-                        <span className="text-xs text-slate-600">{d.operator || d.operator?.name}</span>
+                        <span className="rounded bg-blue-600 px-2 py-1 text-xs font-bold text-white">
+                          {d.platform || 'TBA'}
+                        </span>
+                        <span className="text-xs text-slate-600">
+                          {d.operator || d.operator?.name}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -1049,8 +1039,16 @@ export default function EnhancedJourneyPlanner({
 
       <DataAttribution className="mb-8" />
 
-      <StationDetailsPanel crs={fromStation?.code || null} open={showFromInfo} onClose={() => setShowFromInfo(false)} />
-      <StationDetailsPanel crs={toStation?.code || null} open={showToInfo} onClose={() => setShowToInfo(false)} />
+      <StationDetailsPanel
+        crs={fromStation?.code || null}
+        open={showFromInfo}
+        onClose={() => setShowFromInfo(false)}
+      />
+      <StationDetailsPanel
+        crs={toStation?.code || null}
+        open={showToInfo}
+        onClose={() => setShowToInfo(false)}
+      />
     </div>
   )
 }
@@ -1085,4 +1083,3 @@ function formatDuration(minutes: number): string {
   if (mins === 0) return `${hours}h`
   return `${hours}h ${mins}m`
 }
-

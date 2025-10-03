@@ -45,7 +45,7 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Ensure proper workspace linking - pnpm needs to create local node_modules links
-RUN pnpm install --offline --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 # Debug: Check which package managers are available
 RUN echo "=== Package managers available ===" && \
@@ -70,21 +70,16 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 
-# Copy the built application
+# Copy Next.js build output and dependencies for runtime
 COPY --from=builder /app/apps/web/.next ./apps/web/.next
 COPY --from=builder /app/apps/web/public ./apps/web/public
-COPY --from=builder /app/apps/web/package.json ./apps/web/package.json
-
-# Copy root package.json for monorepo context
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
-
-# Copy production node_modules with pnpm structure preserved
+COPY --from=builder /app/apps/web/package.json ./apps/web/
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages ./packages
+COPY --from=builder /app/package.json ./
 
 # Set permissions for app directory
-RUN mkdir -p /app/.next/cache && \
-    chown -R nextjs:nodejs /app
+RUN chown -R nextjs:nodejs /app
 
 # Switch to non-root user
 USER nextjs
@@ -96,8 +91,6 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3000/api/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))" || exit 1
 
-# Start Next.js directly using node with the pnpm-installed binary
+# Start the Next.js server using pnpm exec
 WORKDIR /app/apps/web
-ENV NODE_PATH=/app/node_modules
-# Use find to locate the Next.js binary dynamically and start the app
-CMD ["sh", "-c", "NEXT_BIN=$(find /app/node_modules -name next -type f -path '*/dist/bin/next' | head -1) && exec node \"$NEXT_BIN\" start -p 3000"]
+CMD ["pnpm", "exec", "next", "start"]

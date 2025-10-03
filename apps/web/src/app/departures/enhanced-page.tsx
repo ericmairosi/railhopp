@@ -36,16 +36,56 @@ export default function EnhancedDeparturesPage() {
 
   // Popular stations like Realtime Trains
   const popularStations: QuickLink[] = [
-    { station: { code: 'LBG', name: 'London Bridge' }, isPopular: true, description: 'Major terminus' },
-    { station: { code: 'WAT', name: 'London Waterloo' }, isPopular: true, description: 'Busiest station' },
-    { station: { code: 'EUS', name: 'London Euston' }, isPopular: true, description: 'West Coast Main Line' },
-    { station: { code: 'PAD', name: 'London Paddington' }, isPopular: true, description: 'Great Western Railway' },
-    { station: { code: 'VIC', name: 'London Victoria' }, isPopular: true, description: 'South & Southeast' },
-    { station: { code: 'LST', name: 'London Liverpool Street' }, isPopular: true, description: 'City & East Anglia' },
-    { station: { code: 'CLJ', name: 'Clapham Junction' }, isPopular: true, description: 'Busiest interchange' },
-    { station: { code: 'MAN', name: 'Manchester Piccadilly' }, isPopular: true, description: 'Northern hub' },
-    { station: { code: 'BHM', name: 'Birmingham New Street' }, isPopular: true, description: 'Midlands hub' },
-    { station: { code: 'EDB', name: 'Edinburgh' }, isPopular: true, description: 'Scottish capital' },
+    {
+      station: { code: 'LBG', name: 'London Bridge' },
+      isPopular: true,
+      description: 'Major terminus',
+    },
+    {
+      station: { code: 'WAT', name: 'London Waterloo' },
+      isPopular: true,
+      description: 'Busiest station',
+    },
+    {
+      station: { code: 'EUS', name: 'London Euston' },
+      isPopular: true,
+      description: 'West Coast Main Line',
+    },
+    {
+      station: { code: 'PAD', name: 'London Paddington' },
+      isPopular: true,
+      description: 'Great Western Railway',
+    },
+    {
+      station: { code: 'VIC', name: 'London Victoria' },
+      isPopular: true,
+      description: 'South & Southeast',
+    },
+    {
+      station: { code: 'LST', name: 'London Liverpool Street' },
+      isPopular: true,
+      description: 'City & East Anglia',
+    },
+    {
+      station: { code: 'CLJ', name: 'Clapham Junction' },
+      isPopular: true,
+      description: 'Busiest interchange',
+    },
+    {
+      station: { code: 'MAN', name: 'Manchester Piccadilly' },
+      isPopular: true,
+      description: 'Northern hub',
+    },
+    {
+      station: { code: 'BHM', name: 'Birmingham New Street' },
+      isPopular: true,
+      description: 'Midlands hub',
+    },
+    {
+      station: { code: 'EDB', name: 'Edinburgh' },
+      isPopular: true,
+      description: 'Scottish capital',
+    },
     { station: { code: 'GLA', name: 'Glasgow Queen Street' }, description: 'Scottish services' },
     { station: { code: 'LDS', name: 'Leeds' }, description: 'Yorkshire hub' },
   ]
@@ -63,7 +103,7 @@ export default function EnhancedDeparturesPage() {
       description: 'Birmingham area stations',
     },
     {
-      name: 'Manchester Stations', 
+      name: 'Manchester Stations',
       stations: ['MAN', 'MCV', 'MPT'],
       description: 'Greater Manchester stations',
     },
@@ -73,7 +113,9 @@ export default function EnhancedDeparturesPage() {
     // Set initial station from URL params
     const stationParam = searchParams?.get('station')
     if (stationParam) {
-      const station = popularStations.find(s => s.station.code === stationParam.toUpperCase())?.station
+      const station = popularStations.find(
+        (s) => s.station.code === stationParam.toUpperCase()
+      )?.station
       if (station) {
         setSelectedStation(station)
       }
@@ -219,7 +261,9 @@ export default function EnhancedDeparturesPage() {
 
           {/* Station Search */}
           <div className="mb-6">
-            <label className="mb-3 block text-sm font-semibold text-slate-700">Search for a station</label>
+            <label className="mb-3 block text-sm font-semibold text-slate-700">
+              Search for a station
+            </label>
             <div className="max-w-xl">
               <StationSearch
                 placeholder="Enter station name or code (e.g. Kings Cross, KGX)"
@@ -234,7 +278,9 @@ export default function EnhancedDeparturesPage() {
           {showFilters && (
             <div className="mb-6 grid gap-4 rounded-lg bg-slate-50 p-4 md:grid-cols-4">
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Filter by destination</label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Filter by destination
+                </label>
                 <input
                   type="text"
                   placeholder="e.g. Manchester"
@@ -244,7 +290,9 @@ export default function EnhancedDeparturesPage() {
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Filter by operator</label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Filter by operator
+                </label>
                 <select
                   value={filterOperator}
                   onChange={(e) => setFilterOperator(e.target.value)}
@@ -259,7 +307,9 @@ export default function EnhancedDeparturesPage() {
                 </select>
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">Auto-refresh</label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Auto-refresh
+                </label>
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
@@ -312,7 +362,7 @@ export default function EnhancedDeparturesPage() {
                         }`}
                       />
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div
                         className={`font-semibold ${
                           selectedStation?.code === item.station.code
@@ -381,14 +431,10 @@ export default function EnhancedDeparturesPage() {
             <div className="border-b border-slate-200 p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900">
-                    {selectedStation.name}
-                  </h2>
+                  <h2 className="text-2xl font-bold text-slate-900">{selectedStation.name}</h2>
                   <div className="mt-1 flex items-center gap-4 text-sm text-slate-600">
                     <span>Station Code: {selectedStation.code}</span>
-                    {lastRefresh && (
-                      <span>Last updated: {lastRefresh.toLocaleTimeString()}</span>
-                    )}
+                    {lastRefresh && <span>Last updated: {lastRefresh.toLocaleTimeString()}</span>}
                     {autoRefresh && (
                       <div className="flex items-center gap-1">
                         <div className="h-2 w-2 animate-pulse rounded-full bg-green-500"></div>
@@ -413,7 +459,9 @@ export default function EnhancedDeparturesPage() {
               fallback={
                 <div className="p-8 text-center">
                   <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-red-500" />
-                  <p className="mb-2 text-lg font-semibold text-slate-900">Unable to load departures</p>
+                  <p className="mb-2 text-lg font-semibold text-slate-900">
+                    Unable to load departures
+                  </p>
                   <p className="text-slate-600">
                     Please try refreshing or selecting a different station.
                   </p>
@@ -465,12 +513,10 @@ export default function EnhancedDeparturesPage() {
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <div className="text-center text-sm text-slate-600">
             <p>
-              Live departure data updates every {refreshInterval} seconds. 
-              Times shown are based on real-time information where available.
+              Live departure data updates every {refreshInterval} seconds. Times shown are based on
+              real-time information where available.
             </p>
-            <p className="mt-1">
-              © 2025 Railhopp. Powered by UK rail network data feeds.
-            </p>
+            <p className="mt-1">© 2025 Railhopp. Powered by UK rail network data feeds.</p>
           </div>
         </div>
       </footer>

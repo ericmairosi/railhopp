@@ -228,6 +228,19 @@ npx vercel --prod # Production deployment
 
 ## Current Status & Roadmap
 
+### Live updates (Kafka-based Pub/Sub)
+
+- UI components (LiveIndicator, EnhancedJourneyPlanner, Departures page) subscribe to `/api/darwin/kafka/stream` for SSE updates.
+- This stream is backed by the Darwin Pub/Sub (Kafka) topic from the Rail Data Marketplace (Confluent Cloud).
+- Configure via env:
+  - DARWIN_KAFKA_BROKERS
+  - DARWIN_KAFKA_USERNAME / DARWIN_KAFKA_PASSWORD
+  - DARWIN_KAFKA_TOPIC
+  - DARWIN_KAFKA_GROUP_ID (optional)
+  - DARWIN_KAFKA_SASL_MECHANISM (default: plain)
+  - DARWIN_KAFKA_SSL (default: true)
+- Do not remove Kafka endpoints; Kafka is the canonical Pub/Sub path.
+
 ### Completed (Phase 1)
 
 - [x] Monorepo setup with Turborepo
